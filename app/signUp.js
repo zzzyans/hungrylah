@@ -9,6 +9,7 @@ import Loading from '../components/Loading';
 
 export default function SignUp() {
   const router = useRouter();
+  const {register} = useAuth();
   const [loading, setLoading] = useState(false);
 
   const emailRef = useRef("");
@@ -22,7 +23,15 @@ export default function SignUp() {
       return;
     }
 
-    // register process
+    setLoading(true);
+
+    let response = await register(emailRef.current, passwordRef.current, usernameRef.current, profileRef.current);
+    setLoading(false);
+
+    console.log('got result: ', response);
+    if (!response.success) {
+      Alert.alert('Sign Up', response.msg);
+    }
   }
 
   return (
