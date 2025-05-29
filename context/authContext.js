@@ -45,12 +45,14 @@ export const AuthContextProvider = ({children})=>{
 
             await setDoc(doc(db, "users", response?.user?.uid), {
                 username,
-                profileURL,
+                profileUrl,
                 userId: response?.user?.uid
             });
             return {success: true, data: response?.user};
         } catch(e) {
-            return {success: false, msg: e.message};
+            let msg = e.message;
+            if (msg.includes('(auth/invalid-email)')) msg = 'Invalid Email'
+            return {success: false, msg};
         }
     }
 

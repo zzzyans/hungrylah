@@ -6,6 +6,7 @@ import { Alert, Image, Pressable, Text, TextInput, TouchableOpacity, View } from
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import CustomKeyboardView from '../components/CustomKeyboardView';
 import Loading from '../components/Loading';
+import { useAuth } from '../context/authContext';
 
 export default function SignUp() {
   const router = useRouter();
