@@ -16,7 +16,9 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.hungrylah.app",
+      "GoogleMapsApiKey": "AIzaSyA5X64hfO9sd5Pe3HXbX44HO7SLHs0RB0Q"
     },
     "web": {
       "bundler": "metro",
