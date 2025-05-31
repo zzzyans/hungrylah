@@ -32,6 +32,10 @@ export default function SignUp() {
     if (!response.success) {
       Alert.alert('Sign Up', response.msg);
     }
+    else {
+      // redirect to home
+      router.replace('home');
+    }
   }
 
   return (

@@ -1,6 +1,6 @@
 import { Slot, Tabs, useRouter, useSegments } from "expo-router";
 import { useEffect } from 'react';
-import { AuthContextProvider, useAuth } from '../../context/authContext';
+import { useAuth } from '../../context/authContext';
 
 
 const MainLayout = ()=>{
@@ -36,15 +36,15 @@ const MainLayout = ()=>{
         }}
       />
       <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile'
-        }}
-      />
-      <Tabs.Screen
         name="search"
         options={{
           title: 'Search'
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile'
         }}
       />
       <Slot />
@@ -55,8 +55,6 @@ const MainLayout = ()=>{
 
 export default function layout() {
   return (
-    <AuthContextProvider>
       <MainLayout />
-    </AuthContextProvider>
   )
 }

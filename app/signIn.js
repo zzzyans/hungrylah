@@ -1,7 +1,7 @@
 import { Octicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Image, Pressable, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import CustomKeyboardView from '../components/CustomKeyboardView';
@@ -29,6 +29,10 @@ export default function SignIn() {
     console.log('sign in response: ', response);
     if (!response.success) {
       Alert.alert('Sign In', response.msg);
+    }
+    else {
+      // redirect to home
+      router.replace('home');
     }
   }
 
