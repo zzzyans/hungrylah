@@ -8,7 +8,7 @@ export default function StartPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.replace('signIn');
-    }, 1500); // 3000 ms = 3 seconds
+    }, 500); 
 
     return () => clearTimeout(timer);
   }, []);
