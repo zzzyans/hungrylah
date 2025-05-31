@@ -28,6 +28,9 @@ export default function GoogleMapView() {
           </Text>
         </View>
       )}
+      <Text style={{paddingTop: 5, fontSize: 20, fontWeight: 'bold'}}>  
+        Nearby Restaurants
+      </Text>
       <MapView
         provider={PROVIDER_GOOGLE}
         style={styles.map}             // ← apply your exact style here
@@ -40,9 +43,6 @@ export default function GoogleMapView() {
 }
 
 const styles = StyleSheet.create({
-  outerContainer: {
-    flex: 1,
-  },
   banner: {
     position: 'absolute',
     top: 0,

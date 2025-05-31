@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Slot, Tabs, useRouter, useSegments } from "expo-router";
 import { useEffect } from 'react';
 import { useAuth } from '../../context/authContext';
@@ -22,29 +23,42 @@ const MainLayout = ()=>{
   },[isAuthenticated])
 
   return (
-    <Tabs>
+    <Tabs screenOptions = {{
+      headerShown: false}}>
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home'
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" color={color} size={size} />
+          )
         }}
       />
       <Tabs.Screen
         name="favourites"
         options={{
-          title: 'Favourites'
+          tabBarLabel: 'Favourites',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" color={color} size={size} />
+          )
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Search'
+          tabBarLabel: 'Search',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" color={color} size={size} />
+          )
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile'
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" color={color} size={size} />
+          )
         }}
       />
       <Slot />
