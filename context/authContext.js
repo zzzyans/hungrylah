@@ -1,8 +1,10 @@
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebaseConfig";
+import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { app, auth, db } from "../firebaseConfig";
 
+const storage = getStorage(app);
 export const AuthContext = createContext();
 
 export const AuthContextProvider = ({children})=>{
@@ -30,7 +32,7 @@ export const AuthContextProvider = ({children})=>{
 
         if (docSnap.exists()) {
             let data = docSnap.data();
-            setUser({...user, username: data.username, userId: data.userId});
+            setUser(user=>({...user, username: data.username, userId: data.userId}));
         }
     }
 
@@ -40,8 +42,21 @@ export const AuthContextProvider = ({children})=>{
             return {success: true};
         } catch(e) {
             let msg = e.message;
-            if (msg.includes('(auth/invalid-email)')) msg = 'Invalid Email'
-            if (msg.includes('(auth/invalid-credential)')) msg = 'Wrong credentials'
+            if (e.code === 'auth/invalid-email') {
+                msg = 'Invalid email.';
+            } else if (e.code === 'auth/user-not-found') {
+                msg = 'No user found with this email. Please sign up.';
+            } else if (e.code === 'auth/wrong-password') {
+                msg = 'Incorrect password. Please try again.';
+            } else if (e.code === 'auth/invalid-credential') { 
+                msg = 'Invalid credentials. Please check your email and password.';
+            } else if (e.code === 'auth/user-disabled') {
+                msg = 'This user account has been disabled.';
+            } else if (e.code === 'auth/too-many-requests') {
+                msg = 'Access to this account has been temporarily disabled due to too many failed login attempts. Please try again later or reset your password.';
+            } else {
+                msg = 'Login failed. Please try again.';
+            }
             return {success: false, msg};
         }
     }
@@ -67,14 +82,65 @@ export const AuthContextProvider = ({children})=>{
             return {success: true, data: response?.user};
         } catch(e) {
             let msg = e.message;
-            if (msg.includes('(auth/invalid-email)')) msg = 'Invalid Email'
-            if (msg.includes('(auth/email-already-in-use)')) msg = 'This email is already in use'
+            if (e.code === 'auth/invalid-email') {
+                msg = 'Invalid email address format.';
+            } else if (e.code === 'auth/email-already-in-use') {
+                msg = 'This email address is already in use by another account.';
+            } else if (e.code === 'auth/operation-not-allowed') {
+                msg = 'Email/password sign-up is not enabled. Contact support.';
+            } else {
+                msg = 'Registration failed. Please try again.';
             return {success: false, msg};
+            }
         }
     }
 
+    const sendPasswordResetEmailFunc = async(email) =>{
+        try {
+            const response = await sendPasswordResetEmail(auth, email);
+            return {success: true, msg: "Password reset email sent. Please check your inbox."};
+        } catch (e) {
+            let msg = e.message;
+            if (msg.includes("(auth/invalid-email)")) {
+                msg = "Invalid email address.";
+            } else if (msg.includes("(auth/user-not-found)")) {
+                msg = "No user found with this email address.";
+            }
+            console.log("Password Reset Error:", e);
+            return { success: false, msg };
+        }
+    }
+
+    const updateProfilePicture = async(imageUri) => {
+        if (!user) return { success: false, msg: "User not authenticated." };
+    
+        try {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          const fileExtension = imageUri.split(".").pop();
+          const fileName = `${user.uid}_${Date.now()}.${fileExtension}`;
+          const storageRef = ref(storage, `profile_pictures/${user.uid}/${fileName}`);
+    
+          await uploadBytes(storageRef, blob);
+    
+          const downloadURL = await getDownloadURL(storageRef);
+    
+          await updateProfile(auth.currentUser, { photoURL: downloadURL });
+    
+          setUser((prevUser) => ({
+            ...prevUser,
+            photoURL: downloadURL,
+          }));
+    
+          return { success: true, photoURL: downloadURL };
+        } catch (e) {
+          console.error("Error uploading profile picture:", e);
+          return { success: false, msg: e.message };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{user, isAuthenticated, login, register, logout}}>
+        <AuthContext.Provider value={{user, isAuthenticated, login, register, logout, sendPasswordResetEmail: sendPasswordResetEmailFunc, updateProfilePicture}}>
             {children}
         </AuthContext.Provider>
     )

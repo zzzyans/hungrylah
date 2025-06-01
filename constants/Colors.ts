@@ -24,3 +24,18 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+
+export const colourPalette = {
+  lightYellow: "#F7E6AE",
+  lightPeach: "#FCC2B6",
+  lightPink: "#F1B0CF",
+  lightLavender: "#C0A9D9",
+  lightBlue: "#649FC9",
+  darkBlue: "#1F4C6C",
+  lightMint: "#B1EDE3",
+  white: "#FFFFFF",
+  textDark: "#333333", 
+  textMedium: "#555555", 
+  textLight: "#777777", 
+  gray: "gray", 
+};

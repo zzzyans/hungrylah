@@ -1,30 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Slot, Tabs, useRouter, useSegments } from "expo-router";
-import { useEffect } from 'react';
-import { useAuth } from '../../context/authContext';
-
+import { Tabs } from "expo-router";
+import { colourPalette } from "../../constants/Colors";
 
 const MainLayout = ()=>{
-  const {isAuthenticated} = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(()=>{
-    // check if user is authenticated or not
-    if (typeof isAuthenticated == 'undefined') return;
-    const inApp = segments[0] == '(app)';
-    if (isAuthenticated && !inApp) {
-      // redirect to home
-      router.replace('home');
-    } else if (isAuthenticated == false) {
-      // redirect to signIn
-      router.replace('signIn');
-    }
-  },[isAuthenticated])
-
+  
   return (
     <Tabs screenOptions = {{
-      headerShown: false}}>
+      headerShown: false,
+      tabBarActiveTintColor: colourPalette.darkBlue,
+      tabBarInactiveTintColor: colourPalette.lightBlue, 
+      tabBarStyle: {
+          backgroundColor: colourPalette.lightYellow,
+          borderTopWidth: 1,
+          borderTopColor: colourPalette.lightMint,
+          height: 80,
+          paddingBottom: 5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
+      }}>
       <Tabs.Screen
         name="home"
         options={{
@@ -61,13 +57,12 @@ const MainLayout = ()=>{
           )
         }}
       />
-      <Slot />
     </Tabs>
 
   );
 }
 
-export default function layout() {
+export default function TabLayout() {
   return (
       <MainLayout />
   )
