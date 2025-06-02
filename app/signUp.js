@@ -95,7 +95,6 @@ export default function SignUp() {
                 placeholder='Password'
                 secureTextEntry
                 placeholderTextColor={'gray'}
-                textContentType="newPassword"
               />
             </View>
 
@@ -108,7 +107,6 @@ export default function SignUp() {
                 placeholder='Confirm Password'
                 secureTextEntry
                 placeholderTextColor={'gray'}
-                textContentType="newPassword"
               />
             </View>
 
