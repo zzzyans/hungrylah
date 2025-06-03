@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const BASE_URL = "https://places.googleapis.com/v1/places:searchNearby";
-const API_KEY = "AIzaSyD1b2c4g-8a9b2c4g-8a9b2c4g-8a9b2c4g";
-
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY 
 /**
  * Fetches “Nearby Search (New)” results from Google Places.
  * @param {Object} options
