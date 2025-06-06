@@ -47,7 +47,7 @@ export default function Profile() {
 
   const handleMyReviews = () => router.push("/(app)/profile/myReviews");
   const handleDietaryPreferences = () =>
-    router.push("/(app)/profile/dietaryPreferences");
+    router.push("../profile/dietaryPreferences");
   const handleNotificationSettings = () =>
     router.push("/(app)/settings/notifications");
   const handleChangePassword = () =>
