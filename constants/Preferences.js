@@ -17,7 +17,6 @@ export const CUISINE_OPTIONS = [
     { id: "vegan", label: "Vegan" },
     { id: "gluten_free", label: "Gluten-Free" },
     { id: "halal", label: "Halal" }, 
-    { id: "kosher", label: "Kosher" },
     { id: "dairy_free", label: "Dairy-Free" },
   ];
   
