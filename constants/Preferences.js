@@ -1,4 +1,5 @@
 export const CUISINE_OPTIONS = [
+
     { id: "italian", label: "Italian" },
     { id: "chinese", label: "Chinese" },
     { id: "indian", label: "Indian" },
