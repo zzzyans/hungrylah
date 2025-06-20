@@ -46,8 +46,8 @@ export default function Profile() {
   };
 
   const handleMyReviews = () => router.push("/(app)/profile/myReviews");
-  const handleDietaryPreferences = () =>
-    router.push("../profile/dietaryPreferences");
+  const handleEditPreferences = () =>
+    router.push("../profile/editPreferences");
   const handleNotificationSettings = () =>
     router.push("/(app)/settings/notifications");
   const handleChangePassword = () =>
@@ -150,7 +150,7 @@ export default function Profile() {
           <ProfileListItem
             iconName="restaurant-outline"
             text="Dietary Preferences"
-            onPress={handleDietaryPreferences}
+            onPress={handleEditPreferences}
           />
         </View>
 
