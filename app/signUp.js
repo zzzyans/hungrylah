@@ -43,6 +43,9 @@ export default function SignUp() {
     if (!response.success) {
       Alert.alert('Sign Up', response.msg);
     } 
+
+    router.replace('/onboarding/cuisinePreferences');
+
   }
 
   return (

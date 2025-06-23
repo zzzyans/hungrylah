@@ -69,7 +69,7 @@ export default function EditPreferencesScreen() {
     
         if (result.success) {
         Alert.alert("Success", "Preferences saved!", [
-            { text: "OK", onPress: () => router.push("../profile") },
+            { text: "OK", onPress: () => router.push("../home") },
         ]);
         } else {
         Alert.alert("Error", "Could not save preferences. Please try again.");

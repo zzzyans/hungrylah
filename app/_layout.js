@@ -5,22 +5,36 @@ import { LocationProvider } from '../context/locationContext';
 import "../global.css";
 
 const MainLayout = ()=>{
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, user} = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(()=>{
     // check if user is authenticated or not
     if (typeof isAuthenticated == 'undefined') return;
-    const inApp = segments[0] == '(app)';
-    if (isAuthenticated && !inApp) {
-      // redirect to home
-      router.replace('home');
-    } else if (isAuthenticated == false) {
-      // redirect to signIn
-      router.replace('signIn');
+
+    const PUBLIC_ROUTES = ['signIn','signUp','forgotPassword','onboarding'];
+    const isOnboardingRoute = segments[0] === 'onboarding';
+
+    if (!isAuthenticated) {
+      if (!PUBLIC_ROUTES.includes(segments[0])) {
+        router.replace('/signIn');
+      }
+      return;
+    } else if (isAuthenticated && !user.hasCompletedOnboarding && !isOnboardingRoute) {
+      if (segments[0] !== 'onboarding') {
+        router.replace('/onboarding/cuisinePreferences')
+        return;
+      }
+      return;
+    } else if (isAuthenticated && user.hasCompletedOnboarding) {
+      const inApp = ['(app)','onboarding'].includes(segments[0])
+      if (!inApp) {
+        router.replace('/home')
+      }
+      return;
     }
-  },[isAuthenticated])
+  }, [isAuthenticated, user, segments]);  
 
   return <Slot />
 }

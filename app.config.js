@@ -39,7 +39,11 @@ export default ({ config } = {} ) => {
         output: "static",
         favicon: "./assets/images/logo.png"
       },
-      plugins: base.plugins, 
+      plugins: [
+        ...(base.plugins ?? []),
+        'expo-router',
+        'expo-web-browser',
+      ],
       experiments: base.experiments
     }
   }
