@@ -90,8 +90,8 @@ export const AuthContextProvider = ({children})=>{
                 msg = 'Email/password sign-up is not enabled. Contact support.';
             } else {
                 msg = 'Registration failed. Please try again.';
-            return {success: false, msg};
             }
+            return {success: false, msg};
         }
     }
 
