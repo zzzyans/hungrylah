@@ -3,11 +3,11 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
-import SelectableItem from "../../components/SelectableItem";
-import { colourPalette } from "../../constants/Colors";
-import { CUISINE_OPTIONS, DIETARY_OPTIONS, PRICE_RANGE_OPTIONS } from "../../constants/Preferences";
-import { useAuth } from "../../context/authContext";
-import UserPreferencesService from "../../services/PreferencesService";
+import SelectableItem from "../../../components/SelectableItem";
+import { colourPalette } from "../../../constants/Colors";
+import { CUISINE_OPTIONS, DIETARY_OPTIONS, PRICE_RANGE_OPTIONS } from "../../../constants/Preferences";
+import { useAuth } from "../../../context/authContext";
+import PreferencesService from "../../../services/PreferencesService";
 
 export default function EditPreferencesScreen() {
     const router = useRouter();
@@ -16,7 +16,7 @@ export default function EditPreferencesScreen() {
     // service instance, created once user is available
     const preferencesService = useMemo(() => {
     if (user && user.uid) {
-        return new UserPreferencesService(user.uid);
+        return new PreferencesService(user.uid);
     }
     return null;
     }, [user]);

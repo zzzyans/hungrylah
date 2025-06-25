@@ -42,7 +42,10 @@ export default function SignUp() {
     console.log('got result: ', response);
     if (!response.success) {
       Alert.alert('Sign Up', response.msg);
+      return;
     } 
+
+    router.replace("/onboarding");
   }
 
   return (
