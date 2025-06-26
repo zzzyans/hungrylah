@@ -42,9 +42,9 @@ const MainLayout = ()=>{
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="explore"
         options={{
-          tabBarLabel: 'Search',
+          tabBarLabel: 'Explore',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" color={color} size={size} />
           )
