@@ -31,9 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+hungrylah-201dd-firebase-adminsdk-fbsvc-52b4c9ad30.json
 
 app-example

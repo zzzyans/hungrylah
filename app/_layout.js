@@ -12,15 +12,24 @@ const MainLayout = ()=>{
   useEffect(()=>{
     // check if user is authenticated or not
     if (typeof isAuthenticated == 'undefined') return;
-    const inApp = segments[0] == '(app)';
-    if (isAuthenticated && !inApp) {
-      // redirect to home
-      router.replace('home');
-    } else if (isAuthenticated == false) {
-      // redirect to signIn
-      router.replace('signIn');
+
+    // allow signIn, signUp, preferences/* and in-app screens:
+    const top = segments[0];
+    const isOnboarding = top === "onboarding";
+    const inApp = top === "(app)";
+
+    if (isAuthenticated) {
+      if (!inApp && !isOnboarding) {
+        // if logged in, but not on a valid route, go to home
+        router.replace("/home");
+      }
+    } else {
+      // not authenticated, go to sign in
+      if (top !== "signIn" && top !== "signUp" && !isOnboarding) {
+        router.replace("/signIn");
+      }
     }
-  },[isAuthenticated])
+  }, [isAuthenticated, segments]);
 
   return <Slot />
 }

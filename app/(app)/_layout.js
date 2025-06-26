@@ -1,3 +1,5 @@
+// app/(app)/_layout.js
+
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { colourPalette } from "../../constants/Colors";

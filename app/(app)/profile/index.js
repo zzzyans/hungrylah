@@ -5,8 +5,8 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
-import { colourPalette } from "../../constants/Colors";
-import { useAuth } from "../../context/authContext";
+import { colourPalette } from "../../../constants/Colors";
+import { useAuth } from "../../../context/authContext";
 
 const ProfileListItem = ({ iconName, text, onPress, showChevron = true }) => (
   <TouchableOpacity
@@ -47,7 +47,7 @@ export default function Profile() {
 
   const handleMyReviews = () => router.push("/(app)/profile/myReviews");
   const handleEditPreferences = () =>
-    router.push("../profile/editPreferences");
+    router.push("editPreferences");
   const handleNotificationSettings = () =>
     router.push("/(app)/settings/notifications");
   const handleChangePassword = () =>
@@ -149,7 +149,7 @@ export default function Profile() {
           />
           <ProfileListItem
             iconName="restaurant-outline"
-            text="Dietary Preferences"
+            text="Taste Preferences"
             onPress={handleEditPreferences}
           />
         </View>
