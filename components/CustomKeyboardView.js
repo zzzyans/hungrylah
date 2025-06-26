@@ -1,3 +1,5 @@
+// components/CustomKeyboardView.js
+
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 
