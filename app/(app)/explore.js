@@ -9,6 +9,8 @@ import { useAuth } from "../../context/authContext";
 import FavouriteService from "../../services/FavouriteService";
 import RecommendationService from "../../services/RecommendationService";
 
+const PLACEHOLDER_IMAGE = require("../../assets/images/logo.png");
+
 export default function Explore() {
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState([]);
@@ -134,9 +136,7 @@ export default function Explore() {
         {restaurants.map((r) => (
           <View key={r.id} style={styles.card}>
             <Image
-              source={{
-                uri: r.photoURL || "https://via.placeholder.com/300",
-              }}
+              source={PLACEHOLDER_IMAGE}
               style={styles.image}
             />
             <View style={styles.cardContent}>

@@ -7,7 +7,7 @@ const { Firestore, Timestamp } = require('@google-cloud/firestore');
 const { Client } = require('@googlemaps/google-maps-services-js');
 
 // Configuration
-const TARGET_COUNT = 50;
+const TARGET_COUNT = 15;
 const CUISINE_KEYWORDS = ['Chinese','Indian','Malay','Italian','Japanese','Thai','Korean','Mexcian','Vietnamese','Mediterranean','French','American'];
 const PRICE_LEVELS = [1,2,3,4];
 
@@ -104,12 +104,15 @@ class FirestoreService {
     const radius   = 5000; // in meters
 
     const SEARCH_CENTERS = [
-        { lat:1.35, lng:103.95 }, // Tampines
-        { lat:1.39390, lng:103.89 }, // Sengkang
-        { lat:1.2801, lng:103.8447 }, // Bugis
-        { lat:1.3521, lng:103.8198 }, // Central
-        { lat:1.2954, lng:103.7767 }, // East Coast
-        { lat:1.3333, lng:103.7434 }, // Jurong East
+        // { lat:1.35, lng:103.95 }, // Tampines
+        // { lat:1.39390, lng:103.89 }, // Sengkang
+        // { lat:1.2801, lng:103.8447 }, // Bugis
+        // { lat:1.3521, lng:103.8198 }, // Central
+        // { lat:1.2954, lng:103.7767 }, // East Coast
+        // { lat:1.3333, lng:103.7434 }, // Jurong East
+        { lat:1.437, lng:103.746 }, // Kranji
+        { lat:1.429, lng:103.835 }, // Yishun
+        { lat:1.446, lng:103.802 }, // Woodlands
     ];
 
     // 1) Nearby searches from multiple centers
