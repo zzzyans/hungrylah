@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../../constants/Colors";
 import { useAuth } from "../../../context/authContext";
@@ -46,8 +46,7 @@ export default function Profile() {
   };
 
   const handleMyReviews = () => router.push("/(app)/profile/myReviews");
-  const handleEditPreferences = () =>
-    router.push("editPreferences");
+  const handleEditPreferences = () => router.push("/(app)/profile/editPreferences");
   const handleNotificationSettings = () =>
     router.push("/(app)/settings/notifications");
   const handleChangePassword = () =>
@@ -73,7 +72,7 @@ export default function Profile() {
     }
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.mediaTypes,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
       aspect: [1, 1], 
       quality: 0.5, 
