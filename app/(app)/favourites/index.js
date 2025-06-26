@@ -9,6 +9,8 @@ import { useAuth } from "../../../context/authContext";
 import FavouriteService from "../../../services/FavouriteService";
 import WriteReviewScreen from "../../writeReviewScreen";
 
+const PLACEHOLDER_IMAGE = require("../../../assets/images/logo.png");
+
 export default function Favourites() {
   const { user } = useAuth();
   const [favourites, setFavourites] = useState([]);
@@ -92,7 +94,7 @@ export default function Favourites() {
         {favourites.map((fav) => (
           <View key={fav.id} style={styles.card}>
             <Image
-              source={{ uri: fav.photoURL || "https://via.placeholder.com/300" }}
+              source={PLACEHOLDER_IMAGE}
               style={styles.image}
             />
             <View style={styles.cardContent}>

@@ -37,6 +37,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: wp(3), 
+    paddingBottom: hp(2),
+    paddingTop: hp(1.5),
+    marginHorizontal: wp(5),
   },
   logo: {
     width: hp(6),
