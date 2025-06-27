@@ -12,12 +12,9 @@ export default function Explore() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const FILTER_OPTIONS = [
-    "All",
-    "Highly Rated"
-  ];
+  const FILTER_OPTIONS = ["All", "Highly Rated"];
   const [activeFilter, setActiveFilter] = useState("All");
-  const [showDropdown, setShowDropdown] = useState(false); 
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -52,24 +49,28 @@ export default function Explore() {
     );
   }
 
+  // Handler to add a restaurant to favourites.
+  const handleAddFavourite = async (restaurant) => {
+    try {
+      await FavouriteService.addFavourite(user.uid, restaurant);
+      Alert.alert("Success", `"${restaurant.name}" was added to your favourites.`);
+    } catch (error) {
+      console.error("Error adding favourite:", error);
+      Alert.alert("Error", "Could not add favourite. Please try again.");
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>              
-      <View style={styles.headerRow}>                      
-        <Text
-          style={styles.header}
-          numberOfLines={2}                                  
-        >
+    <SafeAreaView style={styles.container}>
+      <View style={styles.headerRow}>
+        <Text style={styles.header} numberOfLines={2}>
           Discover Your Next Favourite Bite
         </Text>
         <TouchableOpacity
-          style={styles.filterIconContainer}                
+          style={styles.filterIconContainer}
           onPress={() => setShowDropdown(true)}
         >
-          <Feather
-            name="filter"
-            size={hp(3.5)}
-            color={colourPalette.textDark}
-          />
+          <Feather name="filter" size={hp(3.5)} color={colourPalette.textDark} />
         </TouchableOpacity>
       </View>
 
@@ -83,7 +84,7 @@ export default function Explore() {
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
         <View style={styles.dropdown}>
-          {FILTER_OPTIONS.map(opt => (
+          {FILTER_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt}
               style={[
@@ -112,14 +113,12 @@ export default function Explore() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}          
+        contentContainerStyle={styles.scrollContent}
       >
-        {restaurants.map(r => (
+        {restaurants.map((r) => (
           <View key={r.id} style={styles.card}>
             <Image
-              source={{
-                uri: r.photoURL || "https://via.placeholder.com/300",
-              }}
+              source={PLACEHOLDER_IMAGE}
               style={styles.image}
             />
             <View style={styles.cardContent}>
@@ -130,8 +129,11 @@ export default function Explore() {
               <Text style={styles.cardDescription}>
                 Rating: {r.rating?.toFixed(1) || "N/A"}
               </Text>
-              <TouchableOpacity style={styles.button}>
-                <Text style={styles.buttonText}>Try This Place</Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => handleAddFavourite(r)} 
+              >
+                <Text style={styles.buttonText}>Save This Place</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -142,27 +144,27 @@ export default function Explore() {
 }
 
 const styles = StyleSheet.create({
-  container: {                                    
+  container: {
     flex: 1,
     backgroundColor: colourPalette.lightYellow,
     paddingHorizontal: wp(5),
   },
-  headerRow: {                                         
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: hp(4),
     paddingHorizontal: wp(7),
-    paddingVertical: wp(1)
+    paddingVertical: wp(1),
   },
-  header: {                                        
+  header: {
     flex: 1,
     flexShrink: 1,
     fontSize: wp(6),
     fontWeight: "bold",
     color: colourPalette.textDark,
   },
-  filterIconContainer: {                              
+  filterIconContainer: {
     marginLeft: wp(2),
     padding: hp(1),
   },
@@ -180,9 +182,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingHorizontal: wp(6),
-    paddingVertical: wp(5)
+    paddingVertical: wp(5),
   },
-  scrollContent: {                                       
+  scrollContent: {
     paddingBottom: hp(4),
   },
   card: {
@@ -233,7 +235,7 @@ const styles = StyleSheet.create({
     fontSize: wp(3.5),
   },
 
-  // Dropdown
+  // Dropdown styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
