@@ -1,12 +1,11 @@
 // app/(app)/explore.js
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useState } from "react";
+import axios from 'axios';
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
-import RecommendationService from "../../services/RecommendationService";
 
 export default function Explore() {
   const { user } = useAuth();
@@ -20,33 +19,20 @@ export default function Explore() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [showDropdown, setShowDropdown] = useState(false); 
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.uid) {
-        setLoading(false);
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    setLoading(true);
+    axios.get(`http://localhost:8000/recommendations/${user.uid}`)
+      .then(response => {
+        setRestaurants(response.data.recommendations);
+      })
+      .catch(error => {
+        console.error('Error fetching recommendations:', error);
         setRestaurants([]);
-        return;
-      }
-      setLoading(true);
-      RecommendationService.getRecommendations(user.uid)
-        .then((recs) => {
-          // Apply filter if needed
-          if (activeFilter !== "All") {
-            recs = recs.filter((r) => {
-              if (activeFilter === "Highly Rated") return r.rating >= 4.5;
-              return true;
-            });
-          }
-          setRestaurants(recs);
-        })
-        .catch((err) => {
-          console.error("Failed to load recommendations:", err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }, [user, activeFilter])
-  );
+      })
+      .finally(() => setLoading(false));
+  }, [user]);
 
   if (loading) {
     return (
