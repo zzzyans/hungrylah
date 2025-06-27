@@ -1,14 +1,17 @@
 // app/(app)/explore.js
 import { Feather } from "@expo/vector-icons";
+import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
+import FavouriteService from '../../services/FavouriteService';
 
 export default function Explore() {
   const { user } = useAuth();
+  const isFocused = useIsFocused();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,11 +19,11 @@ export default function Explore() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
+  // Extract fetch logic
+  const fetchRecommendations = () => {
     if (!user?.uid) return;
-
     setLoading(true);
-    axios.get(`http://localhost:8000/recommendations/${user.uid}`)
+    axios.get(`http://localhost:8000/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`)
       .then(response => {
         setRestaurants(response.data.recommendations);
       })
@@ -29,7 +32,13 @@ export default function Explore() {
         setRestaurants([]);
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  useEffect(() => {
+    if (isFocused && user?.uid) {
+      fetchRecommendations();
+    }
+  }, [isFocused, user, activeFilter]);
 
   if (loading) {
     return (
@@ -118,7 +127,7 @@ export default function Explore() {
         {restaurants.map((r) => (
           <View key={r.id} style={styles.card}>
             <Image
-              source={PLACEHOLDER_IMAGE}
+              source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
               style={styles.image}
             />
             <View style={styles.cardContent}>

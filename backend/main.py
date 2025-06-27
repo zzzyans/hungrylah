@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from recommendation import train_recommendation_model, get_recommendations_for_user, initialize_firebase
+from recommendation import train_recommendation_model, get_recommendations_for_user, initialize_firebase, get_hybrid_recommendations
 
 app = FastAPI()
 
@@ -32,28 +32,13 @@ async def root():
     return {"message": "Hello from FastAPI"}
 
 @app.get("/recommendations/{user_id}")
-async def get_recommendations(user_id: str):
+async def get_recommendations(user_id: str, filter: str = Query("All")):
     algo = model_cache.get("algo")
     trainset = model_cache.get("trainset")
+    db = initialize_firebase()
 
     if not algo or not trainset:
         raise HTTPException(status_code=503, detail="Recommendation service is currently unavailable.")
 
-    try:
-        # Check if the user has any ratings in our training set
-        trainset.to_inner_uid(user_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail=f"No ratings found for user {user_id}. Cannot generate personalized recommendations.")
-
-    recommended_ids = get_recommendations_for_user(user_id, algo, trainset, n=10)
-    
-    # Fetch full restaurant details from Firestore for the recommended IDs
-    db = initialize_firebase()
-    recommended_restaurants = []
-    for restaurant_id in recommended_ids:
-        doc_ref = db.collection('restaurants').document(restaurant_id)
-        doc = doc_ref.get()
-        if doc.exists:
-            recommended_restaurants.append({"id": doc.id, **doc.to_dict()})
-            
+    recommended_restaurants = get_hybrid_recommendations(user_id, algo, trainset, db, n=10, threshold=3, filter=filter)
     return {"recommendations": recommended_restaurants}
