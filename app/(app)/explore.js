@@ -9,6 +9,8 @@ import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
 import FavouriteService from '../../services/FavouriteService';
 
+const API_BASE_URL = "https://268e-2404-160-8102-2f66-16d-b9d2-ad3b-d630.ngrok-free.app";
+
 export default function Explore() {
   const { user } = useAuth();
   const isFocused = useIsFocused();
@@ -23,13 +25,32 @@ export default function Explore() {
   const fetchRecommendations = () => {
     if (!user?.uid) return;
     setLoading(true);
-    axios.get(`http://localhost:8000/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`)
+    axios.get(`${API_BASE_URL}/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`, { timeout: 5000 })
       .then(response => {
         setRestaurants(response.data.recommendations);
       })
       .catch(error => {
-        console.error('Error fetching recommendations:', error);
-        setRestaurants([]);
+        console.error('Error fetching recommendations:', error); 
+        let errorMessage = "Could not fetch recommendations.";
+        if (error.response) {
+          // The request was made and the server responded with a status code that falls out of the range of 2xx
+          console.error('Error Response Data:', error.response.data);
+          console.error('Error Response Status:', error.response.status);
+          errorMessage += ` Server responded with ${error.response.status}.`;
+          if (error.response.data && error.response.data.detail) {
+            errorMessage += ` Detail: ${error.response.data.detail}`;
+          }
+        } else if (error.request) {
+          // The request was made but no response was received 
+          console.error('Error Request:', error.request);
+          errorMessage += " No response from server. Check if backend is running.";
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error Message:', error.message);
+          errorMessage += ` Request setup failed: ${error.message}`;
+        }
+        setRestaurants([]); // Clear restaurants on error
+        Alert.alert("Error", errorMessage);
       })
       .finally(() => setLoading(false));
   };

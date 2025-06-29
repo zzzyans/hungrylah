@@ -142,10 +142,17 @@ def get_hybrid_recommendations(user_id, algo, trainset, db, n=10, threshold=3, f
         return get_content_based_recommendations(user_id, db, n, filter)
     # Collaborative filtering: score all restaurants
     restaurants = get_all_restaurants(db)
+    prefs = get_user_preferences(db, user_id)
     predictions = []
     for r in restaurants:
         pred = algo.predict(user_id, r['id'])
-        predictions.append({**r, 'predicted_rating': pred.est})
-    predictions.sort(key=lambda x: x['predicted_rating'], reverse=True)
+        content_score = compute_content_score(r, prefs)
+        # Min-max normalization
+        norm_pred = (pred.est - 1) / (5 - 1)
+        norm_content = (content_score - 0) / (3 - 0)
+        # Hybrid score: weighted sum
+        final_score = 0.8 * norm_pred + 0.2 * norm_content
+        predictions.append({**r, 'predicted_rating': pred.est, 'content_score': content_score, 'final_score': final_score})
+    predictions.sort(key=lambda x: x['final_score'], reverse=True)
     filtered = apply_filter(predictions, filter)
     return filtered  # no limit 

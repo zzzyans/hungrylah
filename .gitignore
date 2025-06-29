@@ -37,7 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # firebase
-hungrylah-201dd-firebase-adminsdk-fbsvc-52b4c9ad30.json
 backend/serviceAccountKey.json
 
 # example
