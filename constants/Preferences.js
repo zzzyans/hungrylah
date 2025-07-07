@@ -1,24 +1,24 @@
 export const CUISINE_OPTIONS = [
 
-    { id: "italian", label: "Italian" },
-    { id: "chinese", label: "Chinese" },
-    { id: "indian", label: "Indian" },
-    { id: "mexican", label: "Mexican" },
-    { id: "japanese", label: "Japanese" },
-    { id: "thai", label: "Thai" },
-    { id: "vietnamese", label: "Vietnamese" },
-    { id: "korean", label: "Korean" },
-    { id: "mediterranean", label: "Mediterranean" },
-    { id: "french", label: "French" },
-    { id: "american", label: "American" },
+    { id: "Italian", label: "Italian" },
+    { id: "Chinese", label: "Chinese" },
+    { id: "Indian", label: "Indian" },
+    { id: "Mexican", label: "Mexican" },
+    { id: "Japanese", label: "Japanese" },
+    { id: "Thai", label: "Thai" },
+    { id: "Vietnamese", label: "Vietnamese" },
+    { id: "Korean", label: "Korean" },
+    { id: "Mediterranean", label: "Mediterranean" },
+    { id: "French", label: "French" },
+    { id: "American", label: "American" },
   ];
   
   export const DIETARY_OPTIONS = [
-    { id: "vegetarian", label: "Vegetarian" },
-    { id: "vegan", label: "Vegan" },
-    { id: "gluten_free", label: "Gluten-Free" },
-    { id: "halal", label: "Halal" }, 
-    { id: "dairy_free", label: "Dairy-Free" },
+    { id: "Vegetarian", label: "Vegetarian" },
+    { id: "Vegan", label: "Vegan" },
+    { id: "Gluten_free", label: "Gluten-Free" },
+    { id: "Halal", label: "Halal" }, 
+    { id: "Dairy_free", label: "Dairy-Free" },
   ];
   
   export const PRICE_RANGE_OPTIONS = [

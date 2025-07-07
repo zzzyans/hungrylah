@@ -1,18 +1,19 @@
 // app/(app)/explore.js
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useState } from "react";
+import { useIsFocused } from '@react-navigation/native';
+import axios from 'axios';
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
-import FavouriteService from "../../services/FavouriteService";
-import RecommendationService from "../../services/RecommendationService";
+import FavouriteService from '../../services/FavouriteService';
 
-const PLACEHOLDER_IMAGE = require("../../assets/images/logo.png");
+const API_BASE_URL = "https://268e-2404-160-8102-2f66-16d-b9d2-ad3b-d630.ngrok-free.app";
 
 export default function Explore() {
   const { user } = useAuth();
+  const isFocused = useIsFocused();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,34 +21,45 @@ export default function Explore() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [showDropdown, setShowDropdown] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!user?.uid) {
-        setLoading(false);
-        setRestaurants([]);
-        return;
-      }
-      setLoading(true);
-      RecommendationService.getRecommendations(user.uid)
-        .then((recs) => {
-          // Apply filter if needed
-          if (activeFilter !== "All") {
-            recs = recs.filter((r) => {
-              if (activeFilter === "Highly Rated") return r.rating >= 4.5;
-              return true;
-            });
+  // Extract fetch logic
+  const fetchRecommendations = () => {
+    if (!user?.uid) return;
+    setLoading(true);
+    axios.get(`${API_BASE_URL}/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`, { timeout: 5000 })
+      .then(response => {
+        setRestaurants(response.data.recommendations);
+      })
+      .catch(error => {
+        console.error('Error fetching recommendations:', error); 
+        let errorMessage = "Could not fetch recommendations.";
+        if (error.response) {
+          // The request was made and the server responded with a status code that falls out of the range of 2xx
+          console.error('Error Response Data:', error.response.data);
+          console.error('Error Response Status:', error.response.status);
+          errorMessage += ` Server responded with ${error.response.status}.`;
+          if (error.response.data && error.response.data.detail) {
+            errorMessage += ` Detail: ${error.response.data.detail}`;
           }
-          setRestaurants(recs);
-        })
-        .catch((err) => {
-          console.error("Failed to load recommendations:", err);
-          Alert.alert("Error", "Failed to load recommendations.");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }, [user, activeFilter])
-  );
+        } else if (error.request) {
+          // The request was made but no response was received 
+          console.error('Error Request:', error.request);
+          errorMessage += " No response from server. Check if backend is running.";
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error Message:', error.message);
+          errorMessage += ` Request setup failed: ${error.message}`;
+        }
+        setRestaurants([]); // Clear restaurants on error
+        Alert.alert("Error", errorMessage);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (isFocused && user?.uid) {
+      fetchRecommendations();
+    }
+  }, [isFocused, user, activeFilter]);
 
   if (loading) {
     return (
@@ -136,7 +148,7 @@ export default function Explore() {
         {restaurants.map((r) => (
           <View key={r.id} style={styles.card}>
             <Image
-              source={PLACEHOLDER_IMAGE}
+              source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
               style={styles.image}
             />
             <View style={styles.cardContent}>
