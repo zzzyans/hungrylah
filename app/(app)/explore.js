@@ -9,7 +9,7 @@ import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
 import FavouriteService from '../../services/FavouriteService';
 
-const API_BASE_URL = "https://268e-2404-160-8102-2f66-16d-b9d2-ad3b-d630.ngrok-free.app";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 export default function Explore() {
   const { user } = useAuth();
