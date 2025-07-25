@@ -2,8 +2,9 @@
 import { Feather } from "@expo/vector-icons";
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import Swiper from 'react-native-deck-swiper';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
@@ -20,6 +21,8 @@ export default function Explore() {
   const FILTER_OPTIONS = ["All", "Highly Rated"];
   const [activeFilter, setActiveFilter] = useState("All");
   const [showDropdown, setShowDropdown] = useState(false);
+  const swiperRef = useRef(null);
+  const [lastSavedIndex, setLastSavedIndex] = useState(null);
 
   // Extract fetch logic
   const fetchRecommendations = () => {
@@ -79,14 +82,31 @@ export default function Explore() {
     );
   }
 
-  // Handler to add a restaurant to favourites.
-  const handleAddFavourite = async (restaurant) => {
+  // Handler to add a restaurant to favourites, only if not already saved for this card
+  const handleAddFavourite = async (restaurant, cardIndex) => {
+    if (lastSavedIndex === cardIndex) return; // Prevent double-saving
+    setLastSavedIndex(cardIndex);
     try {
       await FavouriteService.addFavourite(user.uid, restaurant);
       Alert.alert("Success", `"${restaurant.name}" was added to your favourites.`);
     } catch (error) {
       console.error("Error adding favourite:", error);
       Alert.alert("Error", "Could not add favourite. Please try again.");
+    }
+  };
+
+  // Handler for Save button: save and move to next card (same as swipe right)
+  const handleSaveAndSwipe = async (restaurant, cardIndex) => {
+    await handleAddFavourite(restaurant, cardIndex);
+    if (swiperRef.current) {
+      swiperRef.current.swipeRight();
+    }
+  };
+
+  // Handler for Next button: skip to next card (swipe left)
+  const handleSkipAndSwipe = () => {
+    if (swiperRef.current) {
+      swiperRef.current.swipeLeft();
     }
   };
 
@@ -139,36 +159,48 @@ export default function Explore() {
         </View>
       </Modal>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {restaurants.map((r) => (
-          <View key={r.id} style={styles.card}>
-            <Image
-              source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
-              style={styles.image}
-            />
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{r.name}</Text>
-              <Text style={styles.cuisine}>
-                {r.cuisineType} • {"$".repeat(r.priceLevel)}
-              </Text>
-              <Text style={styles.cardDescription}>
-                Rating: {r.rating?.toFixed(1) || "N/A"}
-              </Text>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => handleAddFavourite(r)} 
-              >
-                <Text style={styles.buttonText}>Save This Place</Text>
-              </TouchableOpacity>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Swiper
+          ref={swiperRef}
+          cards={restaurants}
+          renderCard={(r, cardIndex) => (
+            <View style={styles.card}>
+              <Image
+                source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
+                style={styles.image}
+              />
+              <View style={styles.cardContent}>
+                <Text style={styles.cardTitle}>{r.name}</Text>
+                <Text style={styles.cuisine}>
+                  {r.cuisineType} • {"$".repeat(r.priceLevel)}
+                </Text>
+                <Text style={styles.cardDescription}>
+                  Rating: {r.rating?.toFixed(1) || "N/A"}
+                </Text>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => handleSaveAndSwipe(r, cardIndex)} 
+                >
+                  <Text style={styles.buttonText}>Save This Place</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, { marginTop: 8 }]}
+                  onPress={handleSkipAndSwipe}
+                >
+                  <Text style={styles.buttonText}>Next</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          )}
+          cardIndex={0}
+          backgroundColor={colourPalette.lightYellow}
+          stackSize={3}
+          disableTopSwipe
+          disableBottomSwipe
+          cardStyle={{ width: wp(88), height: hp(58), borderRadius: 15 }}
+          onSwipedRight={(cardIndex) => handleAddFavourite(restaurants[cardIndex], cardIndex)}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -222,8 +254,8 @@ const styles = StyleSheet.create({
     marginTop: hp(6),
     backgroundColor: colourPalette.white,
     borderRadius: 15,
-    width: wp(80),
-    height: hp(50),
+    width: wp(88), // was wp(80)
+    height: hp(58), // was hp(50)
     elevation: 5,
   },
   image: {
