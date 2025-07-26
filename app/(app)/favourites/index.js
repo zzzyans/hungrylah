@@ -2,7 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../../constants/Colors";
 import { useAuth } from "../../../context/authContext";
@@ -16,12 +16,13 @@ export default function Favourites() {
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   // State for managing review modal
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedRestaurantForReview, setSelectedRestaurantForReview] = useState(null);
 
-  // Fetch favourites with optimized loading
+  // Optimized fetch favourites with better error handling
   const fetchFavourites = useCallback(async (isRefresh = false) => {
     if (!user?.uid) {
       setLoading(false);
@@ -34,11 +35,14 @@ export default function Favourites() {
       setLoading(true);
     }
     
+    setError(null);
+    
     try {
       const favs = await FavouriteService.getFavourites(user.uid);
       setFavourites(favs);
     } catch (err) {
       console.error("Error fetching favourites:", err);
+      setError("Could not load favourites. Please try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,14 +62,21 @@ export default function Favourites() {
     }, [fetchFavourites, user, favourites.length])
   );
 
+  // Optimistic update for removing favourites
   const handleRemoveFavourite = async (restaurantId) => {
+    // Store original state for rollback
+    const originalFavourites = [...favourites];
+    
+    // Optimistic update - remove immediately
+    setFavourites(prev => prev.filter(fav => fav.restaurantId !== restaurantId));
+    
     try {
       await FavouriteService.removeFavourite(user.uid, restaurantId);
-      // Update local state immediately for better UX
-      setFavourites(prev => prev.filter(fav => fav.restaurantId !== restaurantId));
     } catch (error) {
       console.error("Error removing favourite:", error);
       Alert.alert("Error", "Could not remove favourite.");
+      // Revert optimistic update on error
+      setFavourites(originalFavourites);
     }
   };
 
@@ -85,18 +96,66 @@ export default function Favourites() {
     }
   };
 
+  // Memoized favourite card rendering for better performance
+  const renderFavouriteCard = useCallback((fav) => (
+    <View key={fav.id} style={styles.card}>
+      <Image
+        source={PLACEHOLDER_IMAGE}
+        style={styles.image}
+      />
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{fav.name}</Text>
+        <Text style={styles.meta}>
+          {fav.cuisineType} • {"$".repeat(fav.priceLevel)}
+        </Text>
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleRemoveFavourite(fav.restaurantId)}
+          >
+            <Ionicons name="trash-outline" size={wp(5)} color={colourPalette.textDark} />
+            <Text style={styles.actionButtonText}>Remove</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleOpenReviewModal(fav)}
+          >
+            <Ionicons name="create-outline" size={wp(5)} color={colourPalette.textDark} />
+            <Text style={styles.actionButtonText}>Write Review</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  ), [handleRemoveFavourite, handleOpenReviewModal]);
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={colourPalette.lightBlue} />
+        <Text style={styles.loadingText}>Loading favourites...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => fetchFavourites(true)}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   if (!favourites.length) {
     return (
-      <View style={styles.loaderContainer}>
-        <Text style={styles.noFavouritesText}>No favourites yet.</Text>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No favourites yet.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => fetchFavourites(true)}>
+          <Text style={styles.retryButtonText}>Refresh</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -104,49 +163,27 @@ export default function Favourites() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>My Favourites</Text>
-      <ScrollView contentContainerStyle={styles.favContainer}>
-        {favourites.map((fav) => (
-          <View key={fav.id} style={styles.card}>
-            <Image
-              source={PLACEHOLDER_IMAGE}
-              style={styles.image}
-            />
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{fav.name}</Text>
-              <Text style={styles.meta}>
-                {fav.cuisineType} • {"$".repeat(fav.priceLevel)}
-              </Text>
-              <View style={styles.cardActions}>
-                {/* Remove Button */}
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleRemoveFavourite(fav.restaurantId)}
-                >
-                  <Ionicons name="trash-outline" size={wp(5)} color={colourPalette.textDark} />
-                  <Text style={styles.actionButtonText}>Remove</Text>
-                </TouchableOpacity>
-
-                {/* Write Review Button */}
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleOpenReviewModal(fav)}
-                >
-                  <Ionicons name="create-outline" size={wp(5)} color={colourPalette.textDark} />
-                  <Text style={styles.actionButtonText}>Write Review</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        ))}
+      <ScrollView 
+        contentContainerStyle={styles.favContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchFavourites(true)}
+            colors={[colourPalette.lightBlue]}
+            tintColor={colourPalette.lightBlue}
+          />
+        }
+      >
+        {favourites.map(renderFavouriteCard)}
       </ScrollView>
 
-      {/* ADDED: Review Modal */}
+      {/* Review Modal */}
       {showReviewModal && selectedRestaurantForReview && (
         <WriteReviewScreen
           isVisible={showReviewModal}
           restaurantId={selectedRestaurantForReview.restaurantId}
           restaurantName={selectedRestaurantForReview.name}
-          onClose={handleCloseReviewModal} // Pass callback to close modal
+          onClose={handleCloseReviewModal}
         />
       )}
     </SafeAreaView>
@@ -160,8 +197,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
   },
   header: {
+    fontSize: wp(6),
+    fontWeight: "bold",
     color: colourPalette.textDark,
-    fontSize: hp(2.2),
     textAlign: "center",
     marginVertical: hp(3),
   },
@@ -171,9 +209,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colourPalette.lightYellow,
   },
-  noFavouritesText: {
+  loadingText: {
+    marginTop: hp(2),
+    fontSize: wp(4),
+    color: colourPalette.textMedium,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colourPalette.lightYellow,
+    padding: wp(5),
+  },
+  errorText: {
     color: colourPalette.textDark,
     fontSize: hp(2.2),
+    textAlign: "center",
+    marginBottom: hp(3),
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colourPalette.lightYellow,
+    padding: wp(5),
+  },
+  emptyText: {
+    color: colourPalette.textDark,
+    fontSize: hp(2.2),
+    textAlign: "center",
+    marginBottom: hp(3),
+  },
+  retryButton: {
+    backgroundColor: colourPalette.lightBlue,
+    paddingHorizontal: wp(6),
+    paddingVertical: hp(1.5),
+    borderRadius: wp(3),
+  },
+  retryButtonText: {
+    color: colourPalette.white,
+    fontSize: wp(4),
+    fontWeight: "bold",
   },
   favContainer: {
     paddingBottom: hp(4),
@@ -214,7 +290,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: wp(1),
-    flexDirection: "row", // for icon and text
+    flexDirection: "row",
     gap: wp(1),
   },
   actionButtonText: {                    
