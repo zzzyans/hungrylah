@@ -1,8 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
+// app/(app)/editPreferences.js
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
+import ScreenHeader from "../../../components/ScreenHeader";
 import SelectableItem from "../../../components/SelectableItem";
 import { colourPalette } from "../../../constants/Colors";
 import { CUISINE_OPTIONS, DIETARY_OPTIONS, PRICE_RANGE_OPTIONS } from "../../../constants/Preferences";
@@ -87,22 +88,11 @@ export default function EditPreferencesScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <ScreenHeader title="Taste Preferences" /> 
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.container}
             >
-            <TouchableOpacity
-                onPress={() => router.push("../profile")}
-                style={styles.backButton}
-            >
-                <Ionicons
-                    name="arrow-back-outline"
-                    size={hp(3.5)}
-                    color={colourPalette.textDark}
-                />
-            </TouchableOpacity>
-
-            <Text style={styles.header}>Your Food Preferences</Text>
 
             <Text style={styles.sectionTitle}>Favourite Cuisines</Text>
             <View style={styles.itemsContainer}>
@@ -172,7 +162,6 @@ const styles = StyleSheet.create({
     },
     container: {
         paddingHorizontal: wp(5), 
-        paddingTop: hp(2), 
         paddingBottom: hp(5),
     },
     loadingContainer: {
@@ -180,18 +169,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: colourPalette.lightYellow,
-    },
-    backButton: {
-        alignSelf: "flex-start", 
-        padding: wp(1), 
-        marginBottom: hp(1), 
-    },
-    header: {
-        fontSize: hp(3.5),
-        fontWeight: "bold",
-        color: colourPalette.textDark,
-        textAlign: "center",
-        marginBottom: hp(1),
     },
     sectionTitle: {
         fontSize: hp(2.2),

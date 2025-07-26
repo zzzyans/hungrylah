@@ -2,18 +2,21 @@
 import { Feather } from "@expo/vector-icons";
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import Swiper from 'react-native-deck-swiper';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
 import FavouriteService from '../../services/FavouriteService';
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+// const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://e42aa2bf9080.ngrok-free.app";
 
 export default function Explore() {
   const { user } = useAuth();
+  const router = useRouter();
   const isFocused = useIsFocused();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +28,7 @@ export default function Explore() {
   const [lastSavedIndex, setLastSavedIndex] = useState(null);
 
   // Extract fetch logic
-  const fetchRecommendations = () => {
+  const fetchRecommendations = useCallback(() => {
     if (!user?.uid) return;
     setLoading(true);
     axios.get(`${API_BASE_URL}/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`, { timeout: 5000 })
@@ -56,13 +59,13 @@ export default function Explore() {
         Alert.alert("Error", errorMessage);
       })
       .finally(() => setLoading(false));
-  };
+  }, [user, activeFilter]);
 
   useEffect(() => {
     if (isFocused && user?.uid) {
       fetchRecommendations();
     }
-  }, [isFocused, user, activeFilter]);
+  }, [isFocused, user, activeFilter, fetchRecommendations]);
 
   if (loading) {
     return (
@@ -95,19 +98,11 @@ export default function Explore() {
     }
   };
 
-  // Handler for Save button: save and move to next card (same as swipe right)
-  const handleSaveAndSwipe = async (restaurant, cardIndex) => {
-    await handleAddFavourite(restaurant, cardIndex);
-    if (swiperRef.current) {
-      swiperRef.current.swipeRight();
-    }
-  };
-
-  // Handler for Next button: skip to next card (swipe left)
-  const handleSkipAndSwipe = () => {
-    if (swiperRef.current) {
-      swiperRef.current.swipeLeft();
-    }
+  const handleMoreDetails = (restaurant) => {
+    router.push({
+      pathname: "(modals)/restaurantDetails",
+      params: { restaurantId: restaurant.id },
+    });
   };
 
   return (
@@ -159,37 +154,28 @@ export default function Explore() {
         </View>
       </Modal>
 
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.swiperWrapper}>
         <Swiper
           ref={swiperRef}
           cards={restaurants}
-          renderCard={(r, cardIndex) => (
+          renderCard={(r) => (
             <View style={styles.card}>
-              <Image
-                source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
-                style={styles.image}
-              />
-              <View style={styles.cardContent}>
+              <View style={styles.cardInnerContent}>
                 <Text style={styles.cardTitle}>{r.name}</Text>
                 <Text style={styles.cuisine}>
                   {r.cuisineType} • {"$".repeat(r.priceLevel)}
                 </Text>
-                <Text style={styles.cardDescription}>
+                <Text style={styles.cardRating}>
                   Rating: {r.rating?.toFixed(1) || "N/A"}
                 </Text>
-                <TouchableOpacity
-                  style={styles.button}
-                  onPress={() => handleSaveAndSwipe(r, cardIndex)} 
-                >
-                  <Text style={styles.buttonText}>Save This Place</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, { marginTop: 8 }]}
-                  onPress={handleSkipAndSwipe}
-                >
-                  <Text style={styles.buttonText}>Next</Text>
-                </TouchableOpacity>
+                {r.address && <Text style={styles.cardAddress} numberOfLines={2}>{r.address}</Text>}
               </View>
+              <TouchableOpacity
+                style={styles.moreDetailsButton}
+                onPress={() => handleMoreDetails(r)}
+              >
+                <Text style={styles.moreDetailsButtonText}>More Details</Text>
+              </TouchableOpacity>
             </View>
           )}
           cardIndex={0}
@@ -242,65 +228,63 @@ const styles = StyleSheet.create({
     fontSize: hp(2.2),
     textAlign: "center",
   },
-  scrollContainer: {
-    paddingHorizontal: wp(6),
-    paddingVertical: wp(5),
-  },
-  scrollContent: {
-    paddingBottom: hp(4),
+  swiperWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: hp(2),
   },
   card: {
-    marginRight: wp(4),
-    marginTop: hp(6),
     backgroundColor: colourPalette.white,
     borderRadius: 15,
-    width: wp(88), // was wp(80)
-    height: hp(58), // was hp(50)
+    width: wp(88), 
+    height: hp(58), 
     elevation: 5,
+    justifyContent: 'space-between', 
+    alignItems: 'stretch', 
+    paddingBottom: hp(2), 
   },
-  image: {
-    width: "100%",
-    height: hp(20),
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-  },
-  cardContent: {
-    padding: wp(5),
+  cardInnerContent: { 
+    padding: wp(5), 
+    flex: 1, 
+    justifyContent: 'center', 
   },
   cardTitle: {
-    fontSize: wp(5),
+    fontSize: wp(6.5), 
     fontWeight: "bold",
     color: colourPalette.textDark,
+    marginBottom: hp(1),
   },
   cuisine: {
-    fontSize: wp(3.5),
+    fontSize: wp(4.5), 
     color: colourPalette.textMedium,
-    marginVertical: hp(0.5),
+    marginBottom: hp(0.5),
   },
-  cardDescription: {
-    fontSize: wp(3.5),
-    color: "#777",
-    marginVertical: hp(1),
+  cardRating: { 
+    fontSize: wp(4.5), 
+    color: colourPalette.textDark,
+    marginBottom: hp(1),
   },
-  button: {
-    marginTop: hp(2),
-    backgroundColor: colourPalette.white,
-    borderColor: colourPalette.lightMint,
+  cardAddress: { 
+    fontSize: wp(3.8),
+    color: colourPalette.textMedium,
+    marginTop: hp(1),
+    lineHeight: hp(2.2),
+  },
+  moreDetailsButton: { 
+    backgroundColor: colourPalette.lightLavender, 
+    borderColor: colourPalette.lightLavender, 
     borderWidth: 2,
     borderRadius: 20,
-    paddingVertical: hp(1.5),
-    justifyContent: "center",
-    alignItems: "center",
+    paddingVertical: hp(1.8),
+    marginHorizontal: wp(5), 
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  buttonText: {
-    color: colourPalette.textDark,
-    fontSize: wp(3.5),
-  },
-
-  // Dropdown styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
+  moreDetailsButtonText: {
+    color: colourPalette.white, 
+    fontSize: wp(4),
+    fontWeight: 'bold',
   },
   dropdown: {
     position: "absolute",

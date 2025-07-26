@@ -47,14 +47,11 @@ export default function Profile() {
 
   const handleMyReviews = () => router.push("/(app)/profile/myReviews");
   const handleEditPreferences = () => router.push("/(app)/profile/editPreferences");
-  const handleNotificationSettings = () =>
-    router.push("/(app)/settings/notifications");
-  const handleChangePassword = () =>
-    router.push("/(app)/settings/changePassword");
-  const handleHelpSupport = () => router.push("/support/help");
-  const handleAboutApp = () => router.push("/support/about");
-  const handlePrivacyPolicy = () => router.push("/legal/privacy");
-  const handleTermsOfService = () => router.push("/legal/terms");
+  const handleChangePassword = () => router.push("/(app)/profile/changePassword");
+  const handleHelpSupport = () => router.push("/(app)/profile/helpSupport");
+  const handleAboutApp = () => router.push("/(app)/profile/aboutApp");
+  const handlePrivacyPolicy = () => router.push("/(app)/profile/privacyPolicy");
+  const handleTermsOfService = () => router.push("/(app)/profile/termsOfService");
 
   const displayName = user?.displayName || user?.username; 
   const email = user?.email || "No email provided";
@@ -72,7 +69,7 @@ export default function Profile() {
     }
 
     const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1], 
       quality: 0.5, 
@@ -157,11 +154,6 @@ export default function Profile() {
         <SectionHeader title="Settings" />
         <View style={styles.section}>
           <ProfileListItem
-            iconName="notifications-outline"
-            text="Notification Settings"
-            onPress={handleNotificationSettings}
-          />
-          <ProfileListItem
             iconName="lock-closed-outline"
             text="Change Password"
             onPress={handleChangePassword}
@@ -208,7 +200,7 @@ export default function Profile() {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
 
-        <Text style={styles.appVersionText}>App Version 1.0.0</Text>
+        <Text style={styles.appVersionText}>App Version 3.0.0</Text>
       </View>
     </ScrollView>
   );
