@@ -1,14 +1,13 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query } from "firebase/firestore";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import DisplayStars from "../../../components/DisplayStars";
 import Header from "../../../components/Home/Header";
 import RestaurantMap from "../../../components/Home/RestaurantMap";
 import { colourPalette } from "../../../constants/Colors";
-import { db } from "../../../firebaseConfig";
+import DataCacheService from "../../../services/DataCacheService";
 
 const PLACEHOLDER_IMAGE = require("../../../assets/images/chinese.jpg");
 
@@ -17,57 +16,65 @@ export default function Home() {
   const [restaurants, setRestaurants] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  // Fetch restaurants from firestore
+  // Handle search selection
+  const handleSearchSelect = (selectedRestaurant) => {
+    router.push({
+      pathname: "(modals)/restaurantDetails",
+      params: { restaurantId: selectedRestaurant.id },
+    });
+  };
+
+  // Load data with caching and parallel fetching
+  const loadData = useCallback(async () => {
+    if (initialLoad) {
+      setLoading(true);
+    }
+    
+    try {
+      // Fetch restaurants and reviews in parallel
+      const [restaurantsData, reviewsData] = await Promise.all([
+        DataCacheService.getRestaurants(),
+        DataCacheService.getRecentReviews(10)
+      ]);
+
+      setRestaurants(restaurantsData);
+
+      // Process reviews with usernames efficiently
+      const uniqueUserIds = [...new Set(reviewsData.map(review => review.userId))];
+      
+      // Fetch user data in parallel
+      const userPromises = uniqueUserIds.map(userId => DataCacheService.getUser(userId));
+      const usersData = (await Promise.all(userPromises)).filter(Boolean);
+
+      const usernameMap = new Map(usersData.map(user => [user.id, user.username]));
+
+      const reviewsWithUsernames = reviewsData.map(review => ({
+        ...review,
+        username: usernameMap.get(review.userId) || "Anonymous",
+      }));
+
+      setReviews(reviewsWithUsernames);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
+    }
+  }, [initialLoad]);
+
+  // Load data on mount and focus
   useFocusEffect(
     useCallback(() => {
-      async function fetchRestaurantsData() { 
-        try {
-          const q = query(collection(db, "restaurants"));
-          const snapshot = await getDocs(q);
-          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          setRestaurants(data);
-        } catch (error) {
-          console.error("Error fetching restaurants:", error);
-        } 
-      }
-      fetchRestaurantsData(); 
-    }, [])
+      loadData();
+    }, [loadData])
   );
 
-  // Fetch reviews & usernames from firestore
-  useFocusEffect(
-    useCallback(() => {
-      async function fetchReviewsAndUsernames() {
-        try {
-          const reviewsQuery = query(collection(db, "reviews"), orderBy("createdAt", "desc"), limit(10));
-          const reviewsSnapshot = await getDocs(reviewsQuery);
-          const reviewData = reviewsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-          const uniqueUserIds = [...new Set(reviewData.map(review => review.userId))];
-          const userPromises = uniqueUserIds.map(async (userId) => {
-            const userDoc = await getDoc(doc(db, "users", userId));
-            return userDoc.exists() ? { id: userId, username: userDoc.data().username } : null;
-          });
-          const usersData = (await Promise.all(userPromises)).filter(Boolean); 
-
-          const usernameMap = new Map(usersData.map(user => [user.id, user.username]));
-
-          const reviewsWithUsernames = reviewData.map(review => ({
-            ...review,
-            username: usernameMap.get(review.userId) || "Anonymous",
-          }));
-
-          setReviews(reviewsWithUsernames);
-        } catch (error) {
-          console.error("Error fetching reviews and usernames:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-      fetchReviewsAndUsernames();
-    }, [])
-  );
+  // Preload data when component mounts
+  useEffect(() => {
+    DataCacheService.preloadData();
+  }, []);
 
   if (loading) {
     return (
@@ -79,7 +86,7 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
+      <Header onSelect={handleSearchSelect} />
       <RestaurantMap
         restaurants={restaurants}
         onMarkerPress={(restaurant) =>
