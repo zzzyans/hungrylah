@@ -5,9 +5,10 @@ import React, { useEffect } from 'react';
 import { AuthContextProvider, useAuth } from '../context/authContext';
 import { LocationProvider } from '../context/locationContext';
 import "../global.css";
+import DataCacheService from '../services/DataCacheService';
 
 const MainLayout = ()=>{
-  const {isAuthenticated} = useAuth();
+  const {isAuthenticated, user} = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -34,6 +35,16 @@ const MainLayout = ()=>{
     }
   }, [isAuthenticated, segments]);
 
+  // Preload essential data when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user?.uid) {
+      // Preload data in background without blocking UI
+      DataCacheService.preloadData().catch(error => {
+        console.log('[App] Background data preload failed:', error);
+      });
+    }
+  }, [isAuthenticated, user?.uid]);
+
   return <Slot />
 }
 
@@ -41,8 +52,8 @@ export default function RootLayout() {
   return (
     <AuthContextProvider>
       <LocationProvider>
-       <MainLayout />
+        <MainLayout />
       </LocationProvider>
     </AuthContextProvider>
-  )
+  );
 }

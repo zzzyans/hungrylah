@@ -2,7 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../../constants/Colors";
 import { useAuth } from "../../../context/authContext";
@@ -15,18 +15,25 @@ export default function Favourites() {
   const { user } = useAuth();
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // State for managing review modal
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedRestaurantForReview, setSelectedRestaurantForReview] = useState(null);
 
-  // Fetch favourites
-  const fetchFavourites = useCallback(async () => {
+  // Fetch favourites with optimized loading
+  const fetchFavourites = useCallback(async (isRefresh = false) => {
     if (!user?.uid) {
       setLoading(false);
       return;
     }
-    setLoading(true); // Set loading true on every fetch attempt
+    
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       const favs = await FavouriteService.getFavourites(user.uid);
       setFavourites(favs);
@@ -34,24 +41,28 @@ export default function Favourites() {
       console.error("Error fetching favourites:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user]);
 
-  // Refresh favourites every time the screen is focused
+  // Refresh favourites every time the screen is focused (but not on initial load)
   useFocusEffect(
     useCallback(() => {
-      async function loadData() {
-        await fetchFavourites();
+      if (user?.uid && favourites.length === 0) {
+        // Only fetch if we don't have data yet
+        fetchFavourites();
+      } else if (user?.uid) {
+        // For subsequent focuses, do a quick refresh
+        fetchFavourites(true);
       }
-      loadData();
-    }, [fetchFavourites])
+    }, [fetchFavourites, user, favourites.length])
   );
 
   const handleRemoveFavourite = async (restaurantId) => {
     try {
       await FavouriteService.removeFavourite(user.uid, restaurantId);
-      // Refresh list immediately after removal
-      fetchFavourites();
+      // Update local state immediately for better UX
+      setFavourites(prev => prev.filter(fav => fav.restaurantId !== restaurantId));
     } catch (error) {
       console.error("Error removing favourite:", error);
       Alert.alert("Error", "Could not remove favourite.");
@@ -68,7 +79,10 @@ export default function Favourites() {
   const handleCloseReviewModal = () => {
     setShowReviewModal(false);
     setSelectedRestaurantForReview(null);
-    fetchFavourites(); // Refresh favourites after review submission
+    // Only refresh if we actually submitted a review
+    if (showReviewModal) {
+      fetchFavourites(true);
+    }
   };
 
   if (loading) {
@@ -146,9 +160,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(5),
   },
   header: {
-    fontSize: wp(6),
-    fontWeight: "bold",
     color: colourPalette.textDark,
+    fontSize: hp(2.2),
     textAlign: "center",
     marginVertical: hp(3),
   },
