@@ -2,13 +2,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../../constants/Colors";
 import { useAuth } from "../../../context/authContext";
 
-const ProfileListItem = ({ iconName, text, onPress, showChevron = true }) => (
+// Memoized ProfileListItem component for better performance
+const ProfileListItem = React.memo(({ iconName, text, onPress, showChevron = true }) => (
   <TouchableOpacity
     onPress={onPress}
     style={styles.listItemContainer}
@@ -30,71 +31,113 @@ const ProfileListItem = ({ iconName, text, onPress, showChevron = true }) => (
       />
     )}
   </TouchableOpacity>
-);
+));
 
-const SectionHeader = ({ title }) => (
+// Memoized SectionHeader component
+const SectionHeader = React.memo(({ title }) => (
   <Text style={styles.sectionHeader}>{title}</Text>
-);
+));
 
 export default function Profile() {
   const { logout, user, updateProfilePicture } = useAuth();
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logout();
-  };
+  }, [logout]);
 
-  const handleMyReviews = () => router.push("/(app)/profile/myReviews");
-  const handleEditPreferences = () => router.push("/(app)/profile/editPreferences");
-  const handleChangePassword = () => router.push("/(app)/profile/changePassword");
-  const handleHelpSupport = () => router.push("/(app)/profile/helpSupport");
-  const handleAboutApp = () => router.push("/(app)/profile/aboutApp");
-  const handlePrivacyPolicy = () => router.push("/(app)/profile/privacyPolicy");
-  const handleTermsOfService = () => router.push("/(app)/profile/termsOfService");
+  // Memoized navigation handlers
+  const handleMyReviews = useCallback(() => router.push("/(app)/profile/myReviews"), [router]);
+  const handleEditPreferences = useCallback(() => router.push("/(app)/profile/editPreferences"), [router]);
+  const handleChangePassword = useCallback(() => router.push("/(app)/profile/changePassword"), [router]);
+  const handleHelpSupport = useCallback(() => router.push("/(app)/profile/helpSupport"), [router]);
+  const handleAboutApp = useCallback(() => router.push("/(app)/profile/aboutApp"), [router]);
+  const handlePrivacyPolicy = useCallback(() => router.push("/(app)/profile/privacyPolicy"), [router]);
+  const handleTermsOfService = useCallback(() => router.push("/(app)/profile/termsOfService"), [router]);
 
-  const displayName = user?.displayName || user?.username; 
-  const email = user?.email || "No email provided";
-  const photoURL = user?.photoURL; 
+  // Memoized user data
+  const userData = useMemo(() => ({
+    displayName: user?.displayName || user?.username,
+    email: user?.email || "No email provided",
+    photoURL: user?.photoURL
+  }), [user]);
 
-  // image picking & uploading
-  const handleChoosePhoto = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required", "You need to allow access to your photos to upload a profile picture.",
-      );
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1], 
-      quality: 0.5, 
-    });
-
-    if (pickerResult.canceled) {
-      return;
-    }
-
-    if (pickerResult.assets && pickerResult.assets.length > 0) {
-      const imageUri = pickerResult.assets[0].uri;
-      setIsUploading(true);
-      const uploadResponse = await updateProfilePicture(imageUri);
-      setIsUploading(false);
-
-      if (uploadResponse.success) {
-        Alert.alert("Success", "Profile picture updated!");
-      } else {
+  // Optimized image picking & uploading
+  const handleChoosePhoto = useCallback(async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
         Alert.alert(
-          "Upload Failed",
-          uploadResponse.msg || "Could not update profile picture.",
+          "Permission Required", 
+          "You need to allow access to your photos to upload a profile picture."
         );
+        return;
       }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], 
+        quality: 0.5, 
+      });
+
+      if (pickerResult.canceled) {
+        return;
+      }
+
+      if (pickerResult.assets && pickerResult.assets.length > 0) {
+        const imageUri = pickerResult.assets[0].uri;
+        setIsUploading(true);
+        
+        try {
+          const uploadResponse = await updateProfilePicture(imageUri);
+          
+          if (uploadResponse.success) {
+            Alert.alert("Success", "Profile picture updated!");
+          } else {
+            Alert.alert(
+              "Upload Failed",
+              uploadResponse.msg || "Could not update profile picture."
+            );
+          }
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error in image picker:", error);
+      Alert.alert("Error", "Failed to access photo library.");
     }
-  };
+  }, [updateProfilePicture]);
+
+  // Memoized avatar component
+  const renderAvatar = useMemo(() => {
+    if (isUploading) {
+      return (
+        <View style={[styles.avatarPlaceholder, styles.avatarLoading]}>
+          <ActivityIndicator size="large" color={colourPalette.lightBlue} />
+        </View>
+      );
+    }
+    
+    if (userData.photoURL) {
+      return <Image source={{ uri: userData.photoURL }} style={styles.avatar} />;
+    }
+    
+    return (
+      <View style={styles.avatarPlaceholder}>
+        <Ionicons
+          name="person-circle-outline"
+          size={hp(10)}
+          color={colourPalette.lightBlue}
+        />
+      </View>
+    );
+  }, [userData.photoURL, isUploading]);
 
   return (
     <ScrollView
@@ -105,34 +148,20 @@ export default function Profile() {
       <View style={styles.container}>
         {/* user info header */}
         <View style={styles.userInfoHeader}>
-        <Pressable
+          <Pressable
             onPress={handleChoosePhoto} 
             style={styles.avatarContainer}
             disabled={isUploading} 
-        > 
-          {isUploading ? (
-            <View style={[styles.avatarPlaceholder, styles.avatarLoading]}>
-              <ActivityIndicator size="large" color={colourPalette.lightBlue} />
-            </View>
-            ) : photoURL ? (
-              <Image source={{ uri: photoURL }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons
-                  name="person-circle-outline"
-                  size={hp(10)}
-                  color={colourPalette.lightBlue}
-                />
-            </View>
-            )}
+          > 
+            {renderAvatar}
             {!isUploading && ( 
               <View style={styles.editIconOverlay}>
                 <Ionicons name="camera" size={hp(2)} color={colourPalette.white} />
               </View>
             )}
           </Pressable>
-          <Text style={styles.userName}>{displayName}</Text>
-          <Text style={styles.userEmail}>{email}</Text>
+          <Text style={styles.userName}>{userData.displayName}</Text>
+          <Text style={styles.userEmail}>{userData.email}</Text>
         </View>
 
         {/* app-related sections */}
@@ -158,7 +187,6 @@ export default function Profile() {
             text="Change Password"
             onPress={handleChangePassword}
           />
-
         </View>
 
         {/* support & info section */}

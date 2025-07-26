@@ -7,6 +7,8 @@ class RecommendationCacheService {
   constructor() {
     this.cache = new Map();
     this.cacheTimeout = 10 * 60 * 1000; // 10 minutes for recommendations
+    this.maxRetries = 2;
+    this.retryDelay = 1000; // 1 second
   }
 
   // Generate cache key based on user ID and filter
@@ -23,7 +25,22 @@ class RecommendationCacheService {
     return (now - cached.timestamp) < this.cacheTimeout;
   }
 
-  // Get recommendations with caching
+  // Retry logic for failed requests
+  async retryRequest(requestFn, retries = this.maxRetries) {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        if (i === retries) {
+          throw error;
+        }
+        console.log(`[RecommendationCache] Retry ${i + 1}/${retries} after error:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, this.retryDelay * (i + 1)));
+      }
+    }
+  }
+
+  // Get recommendations with caching and retry logic
   async getRecommendations(userId, filter = "All") {
     const cacheKey = this.getCacheKey(userId, filter);
     
@@ -36,11 +53,18 @@ class RecommendationCacheService {
     console.log(`[RecommendationCache] Fetching fresh recommendations for ${userId} with filter ${filter}`);
     
     try {
-      const response = await axios.get(
+      const requestFn = () => axios.get(
         `${API_BASE_URL}/recommendations/${userId}?filter=${encodeURIComponent(filter)}`, 
-        { timeout: 8000 } // Increased timeout
+        { 
+          timeout: 8000,
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
       );
-      
+
+      const response = await this.retryRequest(requestFn);
       const recommendations = response.data.recommendations;
       
       // Cache the results
@@ -83,32 +107,42 @@ class RecommendationCacheService {
     }
   }
 
-  // Preload recommendations for a user
+  // Preload recommendations for a user with error handling
   async preloadRecommendations(userId) {
     if (!userId) return;
     
     console.log(`[RecommendationCache] Preloading recommendations for ${userId}`);
     try {
       // Preload both "All" and "Highly Rated" filters
-      await Promise.all([
-        this.getRecommendations(userId, "All"),
-        this.getRecommendations(userId, "Highly Rated")
-      ]);
+      const promises = [
+        this.getRecommendations(userId, "All").catch(error => {
+          console.log(`[RecommendationCache] Failed to preload "All" filter:`, error.message);
+          return [];
+        }),
+        this.getRecommendations(userId, "Highly Rated").catch(error => {
+          console.log(`[RecommendationCache] Failed to preload "Highly Rated" filter:`, error.message);
+          return [];
+        })
+      ];
+      
+      await Promise.allSettled(promises);
       console.log(`[RecommendationCache] Preloading complete for ${userId}`);
     } catch (error) {
       console.log(`[RecommendationCache] Preloading failed for ${userId}:`, error.message);
     }
   }
 
-  // Get cache stats
+  // Get cache stats with detailed information
   getCacheStats() {
     const now = Date.now();
     let validEntries = 0;
     let expiredEntries = 0;
+    let totalRecommendations = 0;
     
     for (const [key, value] of this.cache) {
       if ((now - value.timestamp) < this.cacheTimeout) {
         validEntries++;
+        totalRecommendations += value.data.length;
       } else {
         expiredEntries++;
       }
@@ -117,8 +151,42 @@ class RecommendationCacheService {
     return {
       total: this.cache.size,
       valid: validEntries,
-      expired: expiredEntries
+      expired: expiredEntries,
+      totalRecommendations,
+      cacheTimeout: this.cacheTimeout,
+      maxRetries: this.maxRetries
     };
+  }
+
+  // Check if backend is reachable
+  async checkBackendHealth() {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/`, { timeout: 3000 });
+      return response.status === 200;
+    } catch (error) {
+      console.error('[RecommendationCache] Backend health check failed:', error.message);
+      return false;
+    }
+  }
+
+  // Warm up cache for better performance
+  async warmupCache(userId) {
+    if (!userId) return;
+    
+    console.log(`[RecommendationCache] Warming up cache for ${userId}`);
+    try {
+      // Check backend health first
+      const isHealthy = await this.checkBackendHealth();
+      if (!isHealthy) {
+        console.log('[RecommendationCache] Backend not healthy, skipping warmup');
+        return;
+      }
+      
+      // Warm up cache in background
+      this.preloadRecommendations(userId);
+    } catch (error) {
+      console.error('[RecommendationCache] Cache warmup failed:', error);
+    }
   }
 }
 
