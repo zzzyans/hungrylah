@@ -53,4 +53,5 @@ export default class PreferencesService {
       return { success: false, error };
     }
   }
+  
 }

@@ -2,18 +2,23 @@
 import { Feather } from "@expo/vector-icons";
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import Swiper from 'react-native-deck-swiper';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
 import FavouriteService from '../../services/FavouriteService';
 
-// const API_BASE_URL = "https://268e-160-8102-2f66-16d-b9d2-ad3b-d630.ngrok-free.app";
-const API_BASE_URL = "http://127.0.0.1:8000";
+
+// const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://e42aa2bf9080.ngrok-free.app";
+
 
 export default function Explore() {
   const { user } = useAuth();
+  const router = useRouter();
   const isFocused = useIsFocused();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,9 +26,11 @@ export default function Explore() {
   const FILTER_OPTIONS = ["All", "Highly Rated"];
   const [activeFilter, setActiveFilter] = useState("All");
   const [showDropdown, setShowDropdown] = useState(false);
+  const swiperRef = useRef(null);
+  const [lastSavedIndex, setLastSavedIndex] = useState(null);
 
   // Extract fetch logic
-  const fetchRecommendations = () => {
+  const fetchRecommendations = useCallback(() => {
     if (!user?.uid) return;
     setLoading(true);
     axios.get(`${API_BASE_URL}/recommendations/${user.uid}?filter=${encodeURIComponent(activeFilter)}`, { timeout: 5000 })
@@ -54,13 +61,13 @@ export default function Explore() {
         Alert.alert("Error", errorMessage);
       })
       .finally(() => setLoading(false));
-  };
+  }, [user, activeFilter]);
 
   useEffect(() => {
     if (isFocused && user?.uid) {
       fetchRecommendations();
     }
-  }, [isFocused, user, activeFilter]);
+  }, [isFocused, user, activeFilter, fetchRecommendations]);
 
   if (loading) {
     return (
@@ -80,8 +87,10 @@ export default function Explore() {
     );
   }
 
-  // Handler to add a restaurant to favourites.
-  const handleAddFavourite = async (restaurant) => {
+  // Handler to add a restaurant to favourites, only if not already saved for this card
+  const handleAddFavourite = async (restaurant, cardIndex) => {
+    if (lastSavedIndex === cardIndex) return; // Prevent double-saving
+    setLastSavedIndex(cardIndex);
     try {
       await FavouriteService.addFavourite(user.uid, restaurant);
       Alert.alert("Success", `"${restaurant.name}" was added to your favourites.`);
@@ -89,6 +98,13 @@ export default function Explore() {
       console.error("Error adding favourite:", error);
       Alert.alert("Error", "Could not add favourite. Please try again.");
     }
+  };
+
+  const handleMoreDetails = (restaurant) => {
+    router.push({
+      pathname: "(modals)/restaurantDetails",
+      params: { restaurantId: restaurant.id },
+    });
   };
 
   return (
@@ -140,36 +156,39 @@ export default function Explore() {
         </View>
       </Modal>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {restaurants.map((r) => (
-          <View key={r.id} style={styles.card}>
-            <Image
-              source={{ uri: r.photoURL || "https://via.placeholder.com/300" }}
-              style={styles.image}
-            />
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{r.name}</Text>
-              <Text style={styles.cuisine}>
-                {r.cuisineType} • {"$".repeat(r.priceLevel)}
-              </Text>
-              <Text style={styles.cardDescription}>
-                Rating: {r.rating?.toFixed(1) || "N/A"}
-              </Text>
+      <View style={styles.swiperWrapper}>
+        <Swiper
+          ref={swiperRef}
+          cards={restaurants}
+          renderCard={(r) => (
+            <View style={styles.card}>
+              <View style={styles.cardInnerContent}>
+                <Text style={styles.cardTitle}>{r.name}</Text>
+                <Text style={styles.cuisine}>
+                  {r.cuisineType} • {"$".repeat(r.priceLevel)}
+                </Text>
+                <Text style={styles.cardRating}>
+                  Rating: {r.rating?.toFixed(1) || "N/A"}
+                </Text>
+                {r.address && <Text style={styles.cardAddress} numberOfLines={2}>{r.address}</Text>}
+              </View>
               <TouchableOpacity
-                style={styles.button}
-                onPress={() => handleAddFavourite(r)} 
+                style={styles.moreDetailsButton}
+                onPress={() => handleMoreDetails(r)}
               >
-                <Text style={styles.buttonText}>Save This Place</Text>
+                <Text style={styles.moreDetailsButtonText}>More Details</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          )}
+          cardIndex={0}
+          backgroundColor={colourPalette.lightYellow}
+          stackSize={3}
+          disableTopSwipe
+          disableBottomSwipe
+          cardStyle={{ width: wp(88), height: hp(58), borderRadius: 15 }}
+          onSwipedRight={(cardIndex) => handleAddFavourite(restaurants[cardIndex], cardIndex)}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -211,65 +230,63 @@ const styles = StyleSheet.create({
     fontSize: hp(2.2),
     textAlign: "center",
   },
-  scrollContainer: {
-    paddingHorizontal: wp(6),
-    paddingVertical: wp(5),
-  },
-  scrollContent: {
-    paddingBottom: hp(4),
+  swiperWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: hp(2),
   },
   card: {
-    marginRight: wp(4),
-    marginTop: hp(6),
     backgroundColor: colourPalette.white,
     borderRadius: 15,
-    width: wp(80),
-    height: hp(50),
+    width: wp(88), 
+    height: hp(58), 
     elevation: 5,
+    justifyContent: 'space-between', 
+    alignItems: 'stretch', 
+    paddingBottom: hp(2), 
   },
-  image: {
-    width: "100%",
-    height: hp(20),
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-  },
-  cardContent: {
-    padding: wp(5),
+  cardInnerContent: { 
+    padding: wp(5), 
+    flex: 1, 
+    justifyContent: 'center', 
   },
   cardTitle: {
-    fontSize: wp(5),
+    fontSize: wp(6.5), 
     fontWeight: "bold",
     color: colourPalette.textDark,
+    marginBottom: hp(1),
   },
   cuisine: {
-    fontSize: wp(3.5),
+    fontSize: wp(4.5), 
     color: colourPalette.textMedium,
-    marginVertical: hp(0.5),
+    marginBottom: hp(0.5),
   },
-  cardDescription: {
-    fontSize: wp(3.5),
-    color: "#777",
-    marginVertical: hp(1),
+  cardRating: { 
+    fontSize: wp(4.5), 
+    color: colourPalette.textDark,
+    marginBottom: hp(1),
   },
-  button: {
-    marginTop: hp(2),
-    backgroundColor: colourPalette.white,
-    borderColor: colourPalette.lightMint,
+  cardAddress: { 
+    fontSize: wp(3.8),
+    color: colourPalette.textMedium,
+    marginTop: hp(1),
+    lineHeight: hp(2.2),
+  },
+  moreDetailsButton: { 
+    backgroundColor: colourPalette.lightLavender, 
+    borderColor: colourPalette.lightLavender, 
     borderWidth: 2,
     borderRadius: 20,
-    paddingVertical: hp(1.5),
-    justifyContent: "center",
-    alignItems: "center",
+    paddingVertical: hp(1.8),
+    marginHorizontal: wp(5), 
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  buttonText: {
-    color: colourPalette.textDark,
-    fontSize: wp(3.5),
-  },
-
-  // Dropdown styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
+  moreDetailsButtonText: {
+    color: colourPalette.white, 
+    fontSize: wp(4),
+    fontWeight: 'bold',
   },
   dropdown: {
     position: "absolute",

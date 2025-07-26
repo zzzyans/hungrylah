@@ -23,7 +23,7 @@ const MainLayout = ()=>{
     const inModals = top === "(modals)";
 
     if (isAuthenticated) {
-      if (!inApp && !isOnboarding && !inModals) {
+      if (!inApp && !isOnboarding && !inModals && top !== '') {
         // if logged in, but not on a valid route, go to home
         router.replace("/home");
       }
