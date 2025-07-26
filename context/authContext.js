@@ -1,4 +1,10 @@
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import {
+    createUserWithEmailAndPassword, EmailAuthProvider, onAuthStateChanged, reauthenticateWithCredential, sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    signOut,
+    updatePassword,
+    updateProfile
+} from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -139,8 +145,34 @@ export const AuthContextProvider = ({children})=>{
         }
     };
 
+    const changePassword = async (currentPassword, newPassword) => {
+        if (!auth.currentUser) {
+          return { success: false, msg: "No user is currently signed in." };
+        }
+        
+        try {
+          const user = auth.currentUser;
+          const credential = EmailAuthProvider.credential(user.email, currentPassword);
+          await reauthenticateWithCredential(user, credential);
+          await updatePassword(user, newPassword);
+
+          return { success: true, msg: "Password updated successfully." };
+        } catch (e) {
+          let msg = e.message;
+          if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            msg = "The current password you entered is incorrect.";
+          } else if (e.code === 'auth/too-many-requests') {
+            msg = "Too many attempts. Please try again later.";
+          } else {
+            console.error("Password Change Error:", e);
+            msg = "An error occurred while updating your password.";
+          }
+          return { success: false, msg };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{user, isAuthenticated, login, register, logout, sendPasswordResetEmail: sendPasswordResetEmailFunc, updateProfilePicture}}>
+        <AuthContext.Provider value={{user, isAuthenticated, login, register, logout, sendPasswordResetEmail: sendPasswordResetEmailFunc, updateProfilePicture, changePassword,}}>
             {children}
         </AuthContext.Provider>
     )
