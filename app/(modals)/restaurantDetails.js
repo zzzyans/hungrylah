@@ -8,6 +8,7 @@ import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-nat
 import DisplayStars from "../../components/DisplayStars";
 import { colourPalette } from "../../constants/Colors";
 import { db } from "../../firebaseConfig";
+import WriteReviewScreen from "../writeReviewScreen";
 
 const PLACEHOLDER_IMAGE = require("../../assets/images/logo.png");
 
@@ -15,10 +16,12 @@ export default function RestaurantDetailsScreen() {
   const params = useLocalSearchParams(); 
   const router = useRouter(); 
   const restaurantId = params.restaurantId;
+  const onRefreshHome = params.onRefreshHome;
 
   const [restaurant, setRestaurant] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
 
   // Fetch restaurant details and reviews when this modal is shown.
   const fetchData = useCallback(async () => {
@@ -50,8 +53,22 @@ export default function RestaurantDetailsScreen() {
     fetchData();
   }, [fetchData]);
 
-  const handleClose = () => {
+  const handleOpenWriteReviewModal = () => {
+    if (restaurant) { 
+      setShowWriteReviewModal(true);
+    }
+  };
+
+  const handleCloseWriteReviewModal = () => {
+    setShowWriteReviewModal(false);
+    fetchData(); // Re-fetch to get the latest reviews
+  };
+
+  const handleCloseDetailsModal = () => {
     router.back(); 
+    if (onRefreshHome && typeof onRefreshHome === 'function') {
+      onRefreshHome(true); // Force refresh Home
+    }
   };
 
   if (loading) {
@@ -73,8 +90,8 @@ export default function RestaurantDetailsScreen() {
     <SafeAreaView style={styles.modalContent}>
       <ScrollView contentContainerStyle={styles.innerContent}>
         <View style={styles.modalHeader}>
-          <Text style={styles.header}>Restaurant Details</Text>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+        <Text style={styles.header}>{restaurant.name}</Text> 
+          <TouchableOpacity onPress={handleCloseDetailsModal} style={styles.closeButton}>
             <Ionicons name="close-sharp" size={hp(4)} color={colourPalette.textDark} />
           </TouchableOpacity>
         </View>
@@ -93,17 +110,24 @@ export default function RestaurantDetailsScreen() {
           </Text>
         </View>
 
+        <TouchableOpacity
+          style={styles.writeReviewButton}
+          onPress={handleOpenWriteReviewModal}
+        >
+          <Text style={styles.writeReviewButtonText}>Write a Review!</Text>
+        </TouchableOpacity>
+
         <View style={styles.reviewsSection}>
           <Text style={styles.sectionHeader}>Recent Reviews</Text>
           {reviews.length > 0 ? (
             reviews.map(review => (
               <View key={review.id} style={styles.reviewCard}>
                 <DisplayStars rating={review.rating} />
-                <Text style={styles.reviewText}>
+                <Text style={styles.reviewText} numberOfLines={3} ellipsizeMode="tail">
                   {review.reviewText || "No review text."}
                 </Text>
                 <Text style={styles.reviewDate}>
-                  {review.createdAt && review.createdAt.toDate().toLocaleDateString()}
+                  {review.createdAt && review.createdAt.toDate().toLocaleDateString("en-GB", {day: "2-digit", month: "2-digit"})}
                 </Text>
               </View>
             ))
@@ -112,6 +136,14 @@ export default function RestaurantDetailsScreen() {
           )}
         </View>
       </ScrollView>
+      {showWriteReviewModal && restaurant && (
+        <WriteReviewScreen
+          isVisible={showWriteReviewModal}
+          restaurantId={restaurant.id}
+          restaurantName={restaurant.name}
+          onClose={handleCloseWriteReviewModal}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -141,6 +173,16 @@ const styles = StyleSheet.create({
   noData: { 
     fontSize: hp(2.2),
     color: colourPalette.textDark,
+  },
+  closeButtonSmall: { 
+    backgroundColor: colourPalette.lightMint,
+    padding: wp(2),
+    borderRadius: wp(1),
+    marginTop: hp(2),
+  },
+  closeButtonSmallText: { 
+    color: colourPalette.white,
+    fontSize: hp(2),
   },
   modalHeader: {
     flexDirection: "row",
@@ -190,6 +232,18 @@ const styles = StyleSheet.create({
     color: colourPalette.lightBlue,
     marginBottom: hp(1),
   },
+  writeReviewButton: {
+    backgroundColor: colourPalette.lightBlue,
+    paddingVertical: hp(1.5),
+    borderRadius: wp(3),
+    alignItems: "center",
+    marginBottom: hp(3),
+  },
+  writeReviewButtonText: {
+    color: colourPalette.white,
+    fontSize: wp(4),
+    fontWeight: "bold",
+  },
   reviewsSection: {
     marginTop: hp(0),
   },
@@ -205,12 +259,6 @@ const styles = StyleSheet.create({
     padding: wp(3),
     marginBottom: hp(2),
     elevation: 2,
-  },
-  reviewRating: {
-    fontSize: wp(4),
-    fontWeight: "bold",
-    color: colourPalette.lightBlue,
-    marginBottom: hp(1),
   },
   reviewText: {
     fontSize: wp(4),
@@ -228,5 +276,9 @@ const styles = StyleSheet.create({
     color: colourPalette.textMedium,
     textAlign: "center",
     paddingVertical: hp(2),
+  },
+  starDisplay: { 
+    flexDirection: "row",
+    marginBottom: hp(1), 
   },
 });
