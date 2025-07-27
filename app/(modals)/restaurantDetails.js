@@ -1,12 +1,13 @@
 // app/(modals)/restaurantDetails.js 
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { collection, doc, getDoc, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { arrayRemove, arrayUnion, collection, doc, getDoc, getDocs, increment, limit, orderBy, query, updateDoc } from "firebase/firestore";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import DisplayStars from "../../components/DisplayStars";
 import { colourPalette } from "../../constants/Colors";
+import { useAuth } from "../../context/authContext";
 import { db } from "../../firebaseConfig";
 import WriteReviewScreen from "../writeReviewScreen";
 
@@ -15,6 +16,7 @@ const PLACEHOLDER_IMAGE = require("../../assets/images/logo.png");
 export default function RestaurantDetailsScreen() {
   const params = useLocalSearchParams(); 
   const router = useRouter(); 
+  const { user } = useAuth();
   const restaurantId = params.restaurantId;
   const onRefreshHome = params.onRefreshHome;
 
@@ -68,6 +70,51 @@ export default function RestaurantDetailsScreen() {
     router.back(); 
     if (onRefreshHome && typeof onRefreshHome === 'function') {
       onRefreshHome(true); // Force refresh Home
+    }
+  };
+
+  const handleUpvoteReview = async (reviewId, currentUpvotedBy) => {
+    if (!user || !user.uid) {
+      Alert.alert("Login Required", "Please log in to upvote reviews.");
+      return;
+    }
+
+    const reviewRef = doc(db, "reviews", reviewId);
+    const hasUpvoted = currentUpvotedBy && currentUpvotedBy.includes(user.uid);
+
+    try {
+      if (hasUpvoted) {
+        // User has already upvoted, so unvote
+        await updateDoc(reviewRef, {
+          helpfulVotes: increment(-1), // Decrement count
+          upvotedBy: arrayRemove(user.uid), // Remove user's ID from array
+        });
+        // Optimistically update UI
+        setReviews(prevReviews => prevReviews.map(rev =>
+          rev.id === reviewId
+            ? { ...rev, helpfulVotes: (rev.helpfulVotes || 0) - 1, upvotedBy: (rev.upvotedBy || []).filter(uid => uid !== user.uid) }
+            : rev
+        ));
+        console.log(`Unvoted review ${reviewId}`);
+        Alert.alert("Unvoted", "Your upvote has been removed.");
+      } else {
+        // User has not upvoted, so upvote
+        await updateDoc(reviewRef, {
+          helpfulVotes: increment(1), // Increment count
+          upvotedBy: arrayUnion(user.uid), // Add user's ID to array
+        });
+        // Optimistically update UI
+        setReviews(prevReviews => prevReviews.map(rev =>
+          rev.id === reviewId
+            ? { ...rev, helpfulVotes: (rev.helpfulVotes || 0) + 1, upvotedBy: [...(rev.upvotedBy || []), user.uid] }
+            : rev
+        ));
+        console.log(`Upvoted review ${reviewId}`);
+        Alert.alert("Upvoted!", "You have upvoted this review.");
+      }
+    } catch (error) {
+      console.error("Error upvoting/unvoting review:", error);
+      Alert.alert("Error", "Could not update review vote. Please try again.");
     }
   };
 
@@ -126,9 +173,24 @@ export default function RestaurantDetailsScreen() {
                 <Text style={styles.reviewText} numberOfLines={3} ellipsizeMode="tail">
                   {review.reviewText || "No review text."}
                 </Text>
-                <Text style={styles.reviewDate}>
-                  {review.createdAt && review.createdAt.toDate().toLocaleDateString("en-GB", {day: "2-digit", month: "2-digit"})}
-                </Text>
+                <View style={styles.reviewCardFooter}> 
+                  <Text style={styles.reviewDate}>
+                    {review.createdAt && review.createdAt.toDate().toLocaleDateString("en-GB", {day: "2-digit", month: "2-digit"})}
+                  </Text>
+
+                  {/* Upvote Button */}
+                  <TouchableOpacity
+                    style={styles.upvoteButton}
+                    onPress={() => handleUpvoteReview(review.id, review.upvotedBy)}
+                  >
+                    <Ionicons 
+                      name={review.upvotedBy && review.upvotedBy.includes(user?.uid) ? "thumbs-up" : "thumbs-up-outline"} 
+                      size={wp(5)} 
+                      color={colourPalette.lightBlue} 
+                    />
+                    <Text style={styles.upvoteCount}>{review.helpfulVotes || 0}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           ) : (
@@ -260,6 +322,12 @@ const styles = StyleSheet.create({
     marginBottom: hp(2),
     elevation: 2,
   },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp(1),
+  },
   reviewText: {
     fontSize: wp(4),
     color: colourPalette.textMedium,
@@ -270,6 +338,26 @@ const styles = StyleSheet.create({
     fontSize: wp(3.5),
     color: colourPalette.textDark,
     textAlign: "right",
+  },
+  reviewCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: hp(1),
+  },
+  upvoteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.5),
+    borderRadius: wp(2),
+    backgroundColor: colourPalette.lightMint + '40', 
+    gap: wp(1),
+  },
+  upvoteCount: {
+    fontSize: wp(3.5),
+    color: colourPalette.textDark,
+    fontWeight: '600',
   },
   noReviewsText: { 
     fontSize: hp(2),

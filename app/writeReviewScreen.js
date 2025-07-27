@@ -61,6 +61,8 @@ export default function WriteReviewScreen({ isVisible, restaurantId, restaurantN
         rating,
         reviewText,
         createdAt: serverTimestamp(),
+        helpfulVotes: 0,
+        upvotedBy: [],
       });
       Alert.alert("Success", "Review submitted successfully!");
       // Call onClose to dismiss the modal after submission
