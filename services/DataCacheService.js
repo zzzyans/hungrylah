@@ -12,6 +12,7 @@ class DataCacheService {
       lastFetch: {
         restaurants: 0,
         reviews: 0,
+        users: new Map(),
       },
     };
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
@@ -37,8 +38,8 @@ class DataCacheService {
   }
 
   // Get all restaurants with caching
-  async getRestaurants() {
-    if (this.cache.restaurants && this.isCacheValid('restaurants')) {
+  async getRestaurants(forceRefresh = false) {
+    if (!forceRefresh && this.cache.restaurants && this.isCacheValid('restaurants')) { 
       console.log('[DataCache] Returning cached restaurants');
       return this.cache.restaurants;
     }
@@ -62,10 +63,10 @@ class DataCacheService {
   }
 
   // Get user data with caching
-  async getUser(userId) {
+  async getUser(userId, forceRefresh = false) {
     if (!userId) return null;
     
-    if (this.cache.users.has(userId)) {
+    if (!forceRefresh && this.cache.users.has(userId) && this.isCacheValid('users', userId)) {
       console.log(`[DataCache] Returning cached user: ${userId}`);
       return this.cache.users.get(userId);
     }
@@ -76,6 +77,7 @@ class DataCacheService {
       if (userDoc.exists()) {
         const userData = { id: userId, ...userDoc.data() };
         this.cache.users.set(userId, userData);
+        this.cache.lastFetch.users.set(userId, Date.now());
         this.cleanupUserCache(); // Clean up if needed
         return userData;
       }
@@ -87,8 +89,8 @@ class DataCacheService {
   }
 
   // Get recent reviews with caching
-  async getRecentReviews(limit = 10) {
-    if (this.cache.reviews && this.isCacheValid('reviews')) {
+  async getRecentReviews(limit = 10, forceRefresh = false) {
+    if (!forceRefresh && this.cache.reviews && this.isCacheValid('reviews')) {
       console.log('[DataCache] Returning cached reviews');
       return this.cache.reviews;
     }
@@ -118,7 +120,7 @@ class DataCacheService {
   }
 
   // Get multiple users efficiently
-  async getUsers(userIds) {
+  async getUsers(userIds, forceRefresh = false) {
     if (!userIds || userIds.length === 0) return [];
     
     const uniqueUserIds = [...new Set(userIds)];
@@ -127,7 +129,7 @@ class DataCacheService {
     
     // Check cache first
     for (const userId of uniqueUserIds) {
-      if (this.cache.users.has(userId)) {
+      if (!forceRefresh && this.cache.users.has(userId) && this.isCacheValid('users', userId)) {
         results.push(this.cache.users.get(userId));
       } else {
         uncachedUserIds.push(userId);
@@ -137,21 +139,7 @@ class DataCacheService {
     // Fetch uncached users in parallel
     if (uncachedUserIds.length > 0) {
       try {
-        const userPromises = uncachedUserIds.map(async (userId) => {
-          try {
-            const userDoc = await getDoc(doc(db, "users", userId));
-            if (userDoc.exists()) {
-              const userData = { id: userId, ...userDoc.data() };
-              this.cache.users.set(userId, userData);
-              return userData;
-            }
-            return null;
-          } catch (error) {
-            console.error(`[DataCache] Error fetching user ${userId}:`, error);
-            return null;
-          }
-        });
-        
+        const userPromises = uncachedUserIds.map(userId => this.getUser(userId, forceRefresh)); 
         const fetchedUsers = await Promise.all(userPromises);
         results.push(...fetchedUsers.filter(Boolean));
         
@@ -165,7 +153,7 @@ class DataCacheService {
   }
 
   // Clear specific cache
-  clearCache(type) {
+  clearCache(type = 'all') {
     if (type === 'all') {
       this.cache = {
         restaurants: null,
@@ -174,12 +162,17 @@ class DataCacheService {
         lastFetch: {
           restaurants: 0,
           reviews: 0,
+          users: new Map(),
         },
       };
       console.log('[DataCache] Cleared all cache');
-    } else if (this.cache[type]) {
+    } else if (this.cache.hasOwnProperty(type)) { 
       this.cache[type] = null;
       this.cache.lastFetch[type] = 0;
+      if (type === 'users') { 
+        this.cache.users = new Map();
+        this.cache.lastFetch.users = new Map();
+      }
       console.log(`[DataCache] Cleared ${type} cache`);
     }
   }
@@ -218,5 +211,4 @@ class DataCacheService {
   }
 }
 
-// Export singleton instance
 export default new DataCacheService(); 

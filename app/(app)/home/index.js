@@ -1,3 +1,4 @@
+// app/(app)/home/index.js
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,7 +24,7 @@ export default function Home() {
   const handleSearchSelect = (selectedRestaurant) => {
     router.push({
       pathname: "(modals)/restaurantDetails",
-      params: { restaurantId: selectedRestaurant.id },
+      params: { restaurantId: selectedRestaurant.id, onRefreshHome: loadData, },
     });
   };
 

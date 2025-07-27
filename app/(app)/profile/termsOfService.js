@@ -21,7 +21,7 @@ export default function TermsOfServiceScreen() {
         </Text>
         <Text style={styles.termsSubtitle}>2. Use of the Service</Text>
         <Text style={styles.termsText}>
-          The Service and its original content, features and functionality are and will remain the exclusive property of HungryLah Team and its licensors. The Service is protected by copyright, trademark, and other laws of both the [Your Country] and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of HungryLah Team.
+          The Service and its original content, features and functionality are and will remain the exclusive property of HungryLah Team and its licensors. The Service is protected by copyright, trademark, and other laws of both Singapore and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of HungryLah Team.
         </Text>
         <Text style={styles.termsSubtitle}>3. User Accounts</Text>
         <Text style={styles.termsText}>
