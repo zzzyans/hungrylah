@@ -44,6 +44,26 @@ class FavouriteService {
   }
 
   /**
+   * Get IDs of all favourite restaurants for a given user.
+   * @param {string} userId
+   * @returns {Promise<Set<string>>} Set of favourite restaurant IDs.
+   */
+  async getFavouriteIds(userId) {
+    if (!userId) throw new Error("Missing userId");
+    const favCollection = collection(db, "favourites");
+    const q = query(favCollection, where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    const ids = new Set();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data && data.restaurantId) { 
+          ids.add(data.restaurantId);
+      }
+    });
+    return ids;
+  }
+
+  /**
    * Remove a favourite.
    * @param {string} userId 
    * @param {string} restaurantId 

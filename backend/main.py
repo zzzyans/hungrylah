@@ -40,5 +40,5 @@ async def get_recommendations(user_id: str, filter: str = Query("All")):
     if not algo or not trainset:
         raise HTTPException(status_code=503, detail="Recommendation service is currently unavailable.")
 
-    recommended_restaurants = get_hybrid_recommendations(user_id, algo, trainset, db, n=10, threshold=3, filter=filter)
+    recommended_restaurants = get_hybrid_recommendations(user_id, algo, trainset, db, threshold=3, filter=filter)
     return {"recommendations": recommended_restaurants}
