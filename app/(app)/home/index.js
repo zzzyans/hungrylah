@@ -1,19 +1,24 @@
 // app/(app)/home/index.js
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import { arrayRemove, arrayUnion, doc, increment, updateDoc } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-native-responsive-screen";
 import DisplayStars from "../../../components/DisplayStars";
 import Header from "../../../components/Home/Header";
 import RestaurantMap from "../../../components/Home/RestaurantMap";
 import { colourPalette } from "../../../constants/Colors";
+import { useAuth } from "../../../context/authContext";
+import { db } from "../../../firebaseConfig";
 import DataCacheService from "../../../services/DataCacheService";
 
 const PLACEHOLDER_IMAGE = require("../../../assets/images/chinese.jpg");
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [restaurants, setRestaurants] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +97,51 @@ export default function Home() {
     return map;
   }, [restaurants]);
 
+  const handleUpvoteReview = async (reviewId, currentUpvotedBy) => {
+    if (!user || !user.uid) {
+      Alert.alert("Login Required", "Please log in to upvote reviews.");
+      return;
+    }
+
+    const reviewRef = doc(db, "reviews", reviewId);
+    const hasUpvoted = currentUpvotedBy && currentUpvotedBy.includes(user.uid);
+
+    try {
+      if (hasUpvoted) {
+        // User has already upvoted, so unvote
+        await updateDoc(reviewRef, {
+          helpfulVotes: increment(-1), // Decrement count
+          upvotedBy: arrayRemove(user.uid), // Remove user's ID from array
+        });
+        // Optimistically update UI
+        setReviews(prevReviews => prevReviews.map(rev =>
+          rev.id === reviewId
+            ? { ...rev, helpfulVotes: (rev.helpfulVotes || 0) - 1, upvotedBy: (rev.upvotedBy || []).filter(uid => uid !== user.uid) }
+            : rev
+        ));
+        console.log(`Unvoted review ${reviewId}`);
+        Alert.alert("Unvoted", "Your upvote has been removed.");
+      } else {
+        // User has not upvoted, so upvote
+        await updateDoc(reviewRef, {
+          helpfulVotes: increment(1), // Increment count
+          upvotedBy: arrayUnion(user.uid), // Add user's ID to array
+        });
+        // Optimistically update UI
+        setReviews(prevReviews => prevReviews.map(rev =>
+          rev.id === reviewId
+            ? { ...rev, helpfulVotes: (rev.helpfulVotes || 0) + 1, upvotedBy: [...(rev.upvotedBy || []), user.uid] }
+            : rev
+        ));
+        console.log(`Upvoted review ${reviewId}`);
+        Alert.alert("Upvoted!", "You have upvoted this review.");
+      }
+    } catch (error) {
+      console.error("Error upvoting/unvoting review:", error);
+      Alert.alert("Error", "Could not update review vote. Please try again.");
+    }
+  };
+  
   // Memoized review rendering for better performance
   const renderReview = useCallback((review) => {
     const restaurantName = restaurantNameMap.get(review.restaurantId) || "Unknown Restaurant";
@@ -101,6 +151,9 @@ export default function Home() {
           month: "2-digit",
         })
       : "";
+    
+    // Determine if the current user has upvoted this review
+    const hasUpvoted = review.upvotedBy && user?.uid && review.upvotedBy.includes(user.uid);
 
     return (
       <View key={review.id} style={styles.reviewCard}>
@@ -120,12 +173,23 @@ export default function Home() {
         <Text style={styles.reviewText} numberOfLines={3} ellipsizeMode="tail">
           {review.reviewText || "No review text provided."}
         </Text>
-        <Text style={styles.reviewMeta}>
-          {formattedDate}
-        </Text>
+        <View style={styles.reviewCardFooter}>
+          <Text style={styles.reviewDate}>{formattedDate}</Text>
+          <TouchableOpacity
+              style={styles.upvoteButton}
+              onPress={() => handleUpvoteReview(review.id, review.upvotedBy)}
+            >
+              <Ionicons
+                name={hasUpvoted ? "thumbs-up" : "thumbs-up-outline"} 
+                size={wp(5)}
+                color={colourPalette.lightBlue}
+              />
+              <Text style={styles.upvoteCount}>{review.helpfulVotes || 0}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
-  }, [restaurantNameMap]);
+  }, [restaurantNameMap, user]);
 
   if (loading) {
     return (
@@ -272,5 +336,35 @@ const styles = StyleSheet.create({
     fontSize: wp(3.5),
     color: colourPalette.textDark,
     textAlign: "right",
+  },
+  starDisplay: {
+    flexDirection: "row",
+    marginBottom: hp(1),
+  },
+  noReviewsYetText: {
+    fontSize: hp(2),
+    color: colourPalette.textMedium,
+    textAlign: "center",
+    marginTop: hp(2),
+  },
+  reviewCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: hp(1),
+  },
+  upvoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.5),
+    borderRadius: wp(2),
+    backgroundColor: colourPalette.lightMint + "40", 
+    gap: wp(1), 
+  },
+  upvoteCount: {
+    fontSize: wp(3.5),
+    color: colourPalette.textDark,
+    fontWeight: "600",
   },
 });

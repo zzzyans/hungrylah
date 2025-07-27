@@ -2,6 +2,16 @@ import pandas as pd
 from surprise import SVD, Dataset, Reader
 import firebase_admin
 from firebase_admin import credentials, firestore
+import datetime
+import math
+
+CONFIG = {
+    "review_threshold": 3,           # Min reviews for collaborative filtering
+    "time_decay_half_life_days": 60, # Half-life for review time-decay
+    "vote_boost_strength": 0.1,      # Strength of upvote boost 
+    "hybrid_alpha": 0.8,             # Weight for collaborative score (normalized)
+    "hybrid_beta": 0.2               # Weight for content score (normalized)
+}
 
 def initialize_firebase():
     """Initializes the Firebase Admin SDK if not already done."""
@@ -9,6 +19,15 @@ def initialize_firebase():
         cred = credentials.Certificate("serviceAccountKey.json")
         firebase_admin.initialize_app(cred)
     return firestore.client()
+
+def time_decay_factor(timestamp, half_life_days):
+    """Calculates an exponential decay factor based on the age of a review."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    review_time = timestamp.astimezone(datetime.timezone.utc)
+    age_in_days = (now - review_time).total_seconds() / (24 * 3600)
+    
+    decay_rate = math.log(2) / half_life_days
+    return math.exp(-decay_rate * age_in_days)
 
 def get_all_reviews_as_dataframe(db):
     """Fetches all reviews from Firestore and returns them as a Pandas DataFrame."""
@@ -18,6 +37,29 @@ def get_all_reviews_as_dataframe(db):
     reviews_list = []
     for doc in docs:
         review_data = doc.to_dict()
+        rating = review_data.get('rating')
+        created_at = review_data.get('createdAt')
+        helpful_votes = review_data.get('helpfulVotes', 0) 
+        
+        final_rating = rating
+        
+        # Apply time decay
+        if created_at and rating is not None:
+            decay = time_decay_factor(created_at, CONFIG["time_decay_half_life_days"])
+            final_rating = rating * decay
+            
+        # Apply vote boost
+        if final_rating is not None:
+            vote_boost = math.log1p(helpful_votes) * CONFIG["vote_boost_strength"]
+            final_rating += vote_boost
+            
+            # Clamp the rating to be within the 1-5 scale
+            final_rating = max(1, min(5, final_rating)) # Ratings are usually 1-5
+            
+        # Ensure rating is not None and within bounds for Surprise
+        if final_rating is None:
+            continue # Skip reviews with no valid rating
+
         reviews_list.append({
             'userID': review_data.get('userId'),
             'itemID': review_data.get('restaurantId'),
@@ -171,7 +213,7 @@ def get_hybrid_recommendations(user_id, algo, trainset, db, threshold=3, filter=
         norm_pred = (pred.est - 1) / (5 - 1)
         norm_content = (content_score - 0) / (3 - 0)
         # Hybrid score: weighted sum
-        final_score = 0.8 * norm_pred + 0.2 * norm_content
+        final_score = CONFIG["hybrid_alpha"] * norm_pred + CONFIG["hybrid_beta"] * norm_content
         predictions.append({**r, 'predicted_rating': pred.est, 'content_score': content_score, 'final_score': final_score})
     predictions.sort(key=lambda x: x['final_score'], reverse=True)
     filtered = apply_filter(predictions, filter)
