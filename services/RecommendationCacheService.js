@@ -1,7 +1,8 @@
 // services/RecommendationCacheService.js
 import axios from 'axios';
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+// const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://12102b64ef42.ngrok-free.app";
 
 class RecommendationCacheService {
   constructor() {
@@ -190,5 +191,4 @@ class RecommendationCacheService {
   }
 }
 
-// Export singleton instance
 export default new RecommendationCacheService(); 

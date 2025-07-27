@@ -95,6 +95,20 @@ def get_all_restaurants(db):
     docs = db.collection('restaurants').stream()
     return [{"id": doc.id, **doc.to_dict()} for doc in docs]
 
+def get_interacted_restaurant_ids(db, user_id):
+    """Fetches IDs of restaurants the user has favourited or disliked."""
+    interacted_ids = set()
+    
+    favs_ref = db.collection('favourites').where('userId', '==', user_id).stream()
+    for doc in favs_ref:
+        interacted_ids.add(doc.to_dict().get('restaurantId'))
+        
+    dislikes_ref = db.collection('dislikes').where('userId', '==', user_id).stream()
+    for doc in dislikes_ref:
+        interacted_ids.add(doc.to_dict().get('restaurantId'))
+        
+    return interacted_ids
+
 def compute_content_score(restaurant, prefs):
     score = 0
     if not prefs or not restaurant:
@@ -119,29 +133,35 @@ def apply_filter(restaurants, filter):
         return [r for r in restaurants if r.get('rating', 0) >= 4.5]
     return restaurants
 
-def get_content_based_recommendations(user_id, db, n=10, filter="All"):
+def get_content_based_recommendations(user_id, db, excluded_ids, filter="All"):
     prefs = get_user_preferences(db, user_id)
     if not prefs:
         return []
-    restaurants = get_all_restaurants(db)
+    all_restaurants = get_all_restaurants(db)
+    restaurants_to_score = [r for r in all_restaurants if r.get('id') not in excluded_ids]
+    
     scored = []
-    for r in restaurants:
+    for r in restaurants_to_score:
         score = compute_content_score(r, prefs)
-        scored.append({**r, 'score': score})  # include all, even score 0
+        scored.append({**r, 'score': score})
+        
     scored.sort(key=lambda x: x['score'], reverse=True)
     filtered = apply_filter(scored, filter)
     return filtered  # no limit
 
-def get_hybrid_recommendations(user_id, algo, trainset, db, n=10, threshold=3, filter="All"):
+def get_hybrid_recommendations(user_id, algo, trainset, db, threshold=3, filter="All"):
+    excluded_ids = get_interacted_restaurant_ids(db, user_id)
     review_count = get_user_review_count(db, user_id)
+
     if review_count < threshold:
-        return get_content_based_recommendations(user_id, db, n, filter)
+        return get_content_based_recommendations(user_id, db, excluded_ids, filter)
     try:
         trainset.to_inner_uid(user_id)
     except ValueError:
-        return get_content_based_recommendations(user_id, db, n, filter)
+        return get_content_based_recommendations(user_id, db, excluded_ids, filter)
     # Collaborative filtering: score all restaurants
-    restaurants = get_all_restaurants(db)
+    all_restaurants = get_all_restaurants(db)
+    restaurants = [r for r in all_restaurants if r.get('id') not in excluded_ids] 
     prefs = get_user_preferences(db, user_id)
     predictions = []
     for r in restaurants:

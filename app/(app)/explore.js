@@ -9,9 +9,11 @@ import { heightPercentageToDP as hp, widthPercentageToDP as wp } from "react-nat
 import { colourPalette } from "../../constants/Colors";
 import { useAuth } from "../../context/authContext";
 import FavouriteService from '../../services/FavouriteService';
+import InteractionService from '../../services/InteractionService';
 import RecommendationCacheService from '../../services/RecommendationCacheService';
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+// const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://12102b64ef42.ngrok-free.app";
 
 export default function Explore() {
   const { user } = useAuth();
@@ -30,10 +32,16 @@ export default function Explore() {
 
   // Optimized fetch logic with caching
   const fetchRecommendations = useCallback(async (isRefresh = false) => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setRestaurants([]); 
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     
     if (isRefresh) {
       setRefreshing(true);
+      RecommendationCacheService.clearCache(user.uid);
     } else {
       setLoading(true);
     }
@@ -41,8 +49,20 @@ export default function Explore() {
     setError(null);
     
     try {
-      const recommendations = await RecommendationCacheService.getRecommendations(user.uid, activeFilter);
-      setRestaurants(recommendations);
+      const rawRecommendations = await RecommendationCacheService.getRecommendations(user.uid, activeFilter);
+      
+      const [favouriteIds, dislikeIds] = await Promise.all([
+        FavouriteService.getFavouriteIds(user.uid),
+        InteractionService.getDislikeIds(user.uid)
+      ]);
+      const excludedIds = new Set([...favouriteIds, ...dislikeIds]);
+      console.log("[Explore] Excluded IDs:", excludedIds);
+      
+      const filteredRecommendations = rawRecommendations.filter(r => 
+        !excludedIds.has(r.id)
+      );
+
+      setRestaurants(filteredRecommendations);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
       setError('Could not fetch recommendations. Please try again.');
@@ -78,11 +98,35 @@ export default function Explore() {
       
       await FavouriteService.addFavourite(user.uid, restaurant);
       Alert.alert("Success", `"${restaurant.name}" was added to your favourites.`);
+      RecommendationCacheService.clearCache(user.uid);
     } catch (error) {
       console.error("Error adding favourite:", error);
       Alert.alert("Error", "Could not add favourite. Please try again.");
       // Revert optimistic update on error
-      setRestaurants(prev => [...prev, restaurant]);
+      setRestaurants(prev => {
+        const newRestaurants = [...prev];
+        newRestaurants.splice(cardIndex, 0, restaurant); 
+        return newRestaurants;
+      });
+    }
+  };
+
+  const handleDislike = async (restaurant, cardIndex) => {
+    try {
+      await InteractionService.addDislike(user.uid, restaurant.id);
+      console.log(`Disliked: ${restaurant.name}`);
+      // Optimistic update - remove from current list immediately
+      setRestaurants(prev => prev.filter((_, index) => index !== cardIndex));
+      RecommendationCacheService.clearCache(user.uid);
+    } catch (error) {
+      console.error("Error adding dislike:", error);
+      Alert.alert("Error", "Could not record dislike. Please try again.");
+      // Revert optimistic update on error if needed
+      setRestaurants(prev => {
+        const newRestaurants = [...prev];
+        newRestaurants.splice(cardIndex, 0, restaurant); 
+        return newRestaurants;
+      });
     }
   };
 
@@ -210,6 +254,11 @@ export default function Explore() {
           disableBottomSwipe
           cardStyle={{ width: wp(88), height: hp(58), borderRadius: 15 }}
           onSwipedRight={(cardIndex) => handleAddFavourite(restaurants[cardIndex], cardIndex)}
+          onSwipedLeft={(cardIndex) => handleDislike(restaurants[cardIndex])}
+          onSwipedAll={() => {
+            console.log('All cards swiped! Fetching more recommendations...');
+            fetchRecommendations();
+          }}
         />
       </View>
     </SafeAreaView>
