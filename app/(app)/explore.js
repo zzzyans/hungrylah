@@ -12,8 +12,8 @@ import FavouriteService from '../../services/FavouriteService';
 import InteractionService from '../../services/InteractionService';
 import RecommendationCacheService from '../../services/RecommendationCacheService';
 
-// const API_BASE_URL = "http://127.0.0.1:8000";
-const API_BASE_URL = "https://12102b64ef42.ngrok-free.app";
+const API_BASE_URL = "http://127.0.0.1:8000";
+// const API_BASE_URL = "https://3ed72e7f00c5.ngrok-free.app";
 
 export default function Explore() {
   const { user } = useAuth();

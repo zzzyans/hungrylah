@@ -9,8 +9,8 @@ CONFIG = {
     "review_threshold": 3,           # Min reviews for collaborative filtering
     "time_decay_half_life_days": 60, # Half-life for review time-decay
     "vote_boost_strength": 0.1,      # Strength of upvote boost 
-    "hybrid_alpha": 0.8,             # Weight for collaborative score (normalized)
-    "hybrid_beta": 0.2               # Weight for content score (normalized)
+    "hybrid_alpha": 0.9,             # Weight for collaborative score (normalized)
+    "hybrid_beta": 0.1               # Weight for content score (normalized)
 }
 
 def initialize_firebase():
